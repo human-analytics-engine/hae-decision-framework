@@ -3,8 +3,22 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/decision_provider.dart';
 
-class ResultScreen extends StatelessWidget {
+class ResultScreen extends StatefulWidget {
   const ResultScreen({super.key});
+
+  @override
+  State<ResultScreen> createState() => _ResultScreenState();
+}
+
+class _ResultScreenState extends State<ResultScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Ekran açılır açılmaz kararı kaydet
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<DecisionProvider>().saveCurrentDecision();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
