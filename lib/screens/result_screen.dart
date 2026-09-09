@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/decision_provider.dart';
+import '../services/ai_advisor_service.dart';
 
 class ResultScreen extends StatefulWidget {
   const ResultScreen({super.key});
@@ -12,12 +13,72 @@ class ResultScreen extends StatefulWidget {
 }
 
 class _ResultScreenState extends State<ResultScreen> {
+  bool _isLoadingAi = false;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<DecisionProvider>().saveCurrentDecision();
     });
+  }
+
+  void _showAiPrescription(BuildContext context) async {
+    final provider = context.read<DecisionProvider>();
+    setState(() => _isLoadingAi = true);
+
+    final prescription = await AiAdvisorService.generatePrescription(
+      decisionTitle: provider.decisionTitle,
+      category: provider.selectedCategory,
+      failedRules: provider.failedRules,
+      apiKey: provider.geminiApiKey,
+    );
+
+    if (!mounted) return;
+    setState(() => _isLoadingAi = false);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(color: Colors.grey[600], borderRadius: BorderRadius.circular(2)),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  const Icon(Icons.psychology, color: Color(0xFF38BDF8)),
+                  const SizedBox(width: 8),
+                  Text("AI Danışman Analizi", style: Theme.of(context).textTheme.titleLarge),
+                ],
+              ),
+              const Divider(height: 24),
+              Text(prescription, style: const TextStyle(fontSize: 15, height: 1.6)),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text("Anladım"),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -51,10 +112,22 @@ class _ResultScreenState extends State<ResultScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 24),
             if (failed.isNotEmpty) ...[
-              const Text("⚠️ Zayıf Noktalar (Kırılganlıklar)", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text("⚠️ Kırılganlıklar", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  TextButton.icon(
+                    onPressed: _isLoadingAi ? null : () => _showAiPrescription(context),
+                    icon: _isLoadingAi
+                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Icon(Icons.auto_awesome, color: Color(0xFF38BDF8), size: 18),
+                    label: const Text("AI Reçetesi", style: TextStyle(color: Color(0xFF38BDF8))),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
               Expanded(
                 child: ListView.builder(
                   itemCount: failed.length,
@@ -84,7 +157,7 @@ class _ResultScreenState extends State<ResultScreen> {
                 Expanded(
                   child: OutlinedButton.icon(
                     icon: const Icon(Icons.copy, size: 16),
-                    label: const Text("Raporu Kopyala"),
+                    label: const Text("Markdown Kopyala"),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       side: const BorderSide(color: Color(0xFF38BDF8)),

@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../providers/decision_provider.dart';
+import '../models/category_model.dart';
 import '../core/rules_data.dart';
 import 'wizard_screen.dart';
 import 'decision_detail_sheet.dart';
+import 'analytics_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   final TextEditingController _controller = TextEditingController();
@@ -21,7 +23,7 @@ class HomeScreen extends StatelessWidget {
           children: [
             Icon(Icons.shield_outlined, color: Color(0xFF38BDF8)),
             SizedBox(width: 8),
-            Text("10 Evrensel Kural Nedir?"),
+            Text("10 Evrensel Kural"),
           ],
         ),
         content: SizedBox(
@@ -52,6 +54,46 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
+  void _showApiKeyDialog(BuildContext context) {
+    final provider = context.read<DecisionProvider>();
+    final keyController = TextEditingController(text: provider.geminiApiKey ?? '');
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        title: const Text("Gemini API Anahtarı (Opsiyonel)"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              "Daha derin AI analizleri almak için Google AI Studio anahtarınızı girebilirsiniz. Boş bırakırsanız yerel kural motoru çalışır.",
+              style: TextStyle(fontSize: 13, color: Colors.grey),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: keyController,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                hintText: "AIzaSy...",
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("İptal")),
+          ElevatedButton(
+            onPressed: () {
+              provider.setApiKey(keyController.text.trim());
+              Navigator.pop(ctx);
+            },
+            child: const Text("Kaydet"),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<DecisionProvider>();
@@ -61,8 +103,20 @@ class HomeScreen extends StatelessWidget {
         title: const Text("HAE Decision Framework", style: TextStyle(fontSize: 16, letterSpacing: 1)),
         actions: [
           IconButton(
+            icon: const Icon(Icons.insights, color: Color(0xFF38BDF8)),
+            tooltip: "Bilişsel Analitik",
+            onPressed: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const AnalyticsScreen()));
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.key, color: Colors.grey),
+            tooltip: "Gemini API Ayarı",
+            onPressed: () => _showApiKeyDialog(context),
+          ),
+          IconButton(
             icon: const Icon(Icons.info_outline, color: Colors.grey),
-            tooltip: "Evrensel Kurallar Manifestosu",
+            tooltip: "10 Evrensel Kural",
             onPressed: () => _showManifesto(context),
           ),
         ],
@@ -73,35 +127,44 @@ class HomeScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 12),
-              Center(
-                child: Column(
-                  children: [
-                    const Icon(Icons.psychology, size: 56, color: Color(0xFF38BDF8)),
-                    const SizedBox(height: 8),
-                    const Text(
-                      "Cognitive Check-Up",
-                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      "Kendini kandırmamak için ilk adım.",
-                      style: TextStyle(color: Colors.grey, fontSize: 13),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 8),
               TextField(
                 controller: _controller,
                 decoration: InputDecoration(
-                  labelText: "Hangi kararı test etmek istiyorsun?",
-                  hintText: "Örn: X girişimine yatırım yapmak",
+                  labelText: "Test edilecek karar nedir?",
+                  hintText: "Örn: AWS'ten kendi sunucumuza geçmek",
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   filled: true,
                   fillColor: Theme.of(context).colorScheme.surface,
                 ),
               ),
+              const SizedBox(height: 12),
+              
+              // Kategori Çipleri
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: DecisionCategory.values.map((cat) {
+                    final isSelected = provider.selectedCategory == cat;
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8.0),
+                      child: FilterChip(
+                        selected: isSelected,
+                        label: Row(
+                          children: [
+                            Icon(cat.icon, size: 16, color: isSelected ? Colors.white : cat.color),
+                            const SizedBox(width: 6),
+                            Text(cat.label),
+                          ],
+                        ),
+                        selectedColor: cat.color.withOpacity(0.3),
+                        onSelected: (_) => provider.setCategory(cat),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+              
               const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
@@ -120,7 +183,7 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
               
-              const SizedBox(height: 28),
+              const SizedBox(height: 24),
               
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -166,8 +229,12 @@ class HomeScreen extends StatelessWidget {
                                 );
                               },
                               child: ListTile(
+                                leading: Icon(record.category.icon, color: record.category.color),
                                 title: Text(record.title, style: const TextStyle(fontWeight: FontWeight.bold)),
-                                subtitle: Text(DateFormat('dd MMM yyyy, HH:mm').format(record.date)),
+                                subtitle: Text(
+                                  "${record.category.label} • ${DateFormat('dd MMM, HH:mm').format(record.date)}",
+                                  style: const TextStyle(fontSize: 12),
+                                ),
                                 trailing: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
