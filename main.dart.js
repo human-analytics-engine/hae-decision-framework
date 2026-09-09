@@ -25531,7 +25531,7 @@ s=1
 break}s=a!=null&&B.c.is(a).length!==0?3:4
 break
 case 3:p=6
-n=A.hl("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key="+a)
+n=A.hl("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key="+a)
 m="Sen Human Analytics Engine (HAE) ekosisteminin Bili\u015fsel Savunma Dan\u0131\u015fman\u0131s\u0131n.\nKullan\u0131c\u0131 '"+b.c+"' kategorisinde \u015fu karar\u0131 test etti: \""+c+'".\nKarar \u015fu 10 Evrensel Kural testlerinden kald\u0131:\n'+new A.a3(a0,new A.YG(),A.W(a0).i("a3<1,u>")).by(0,"\n")+"\n\nL\xfctfen kullan\u0131c\u0131ya bu karar\u0131 bat\u0131rmamas\u0131 ve kendini kand\u0131rmamas\u0131 i\xe7in k\u0131sa, sert, do\u011frudan ve uygulanabilir 3 maddelik acil eylem plan\u0131 (re\xe7ete) yaz. Markdown format\u0131nda olsun.\n"
 j=t.N
 i=A.ak(["Content-Type","application/json"],j,j)
