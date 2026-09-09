@@ -122,7 +122,7 @@ Lütfen metni yarıda kesmeyecek şekilde, DERLİ TOPLU, OKUNAKLI ve tam olarak 
               ],
               "generationConfig": {
                 "temperature": 0.75,
-                "maxOutputTokens": 2048, // Kesilmeyi önleyen geniş token alanı
+                "maxOutputTokens": 2048,
               }
             }),
           );
