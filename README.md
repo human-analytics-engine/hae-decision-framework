@@ -1,5 +1,10 @@
 # 🧠 Human Analytics Engine: Decision Framework (hae-decision-framework) 🛡️
 
+[![Live Demo](https://img.shields.io/badge/Live_Demo-Open_Web_App-00ADB5?style=for-the-badge&logo=google-chrome&logoColor=white)](https://human-analytics-engine.github.io/hae-decision-framework/)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg?style=for-the-badge)](https://www.gnu.org/licenses/agpl-3.0)
+
+> **Canlı Uygulamayı Deneyin:** [https://human-analytics-engine.github.io/hae-decision-framework/](https://human-analytics-engine.github.io/hae-decision-framework/)
+
 *"İlk kural kendini kandırmamaktır; ve kandırılması en kolay kişi kendinsin." — Richard Feynman*
 
 **Human Analytics Engine (HAE)** ekosisteminin karar alma ve filtreleme modülü olan bu proje; Finans, Tıp, Yapay Zeka ve Felsefe dünyasının birbirinden bağımsız olarak icat ettiği **"Evrensel Yanılgı Savunmalarını"** cebinize taşıyan açık kaynaklı bir bilişsel kontrol (Cognitive Check-Up) uygulamasıdır.
