@@ -3,11 +3,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/decision_provider.dart';
+import '../models/decision_history_model.dart';
 import '../models/rule_model.dart';
+import '../core/rules_data.dart';
 import '../services/ai_advisor_service.dart';
 
 class ResultScreen extends StatefulWidget {
-  const ResultScreen({super.key});
+  final DecisionHistory? historyRecord; // Geçmişten geliyorsa burası dolu olur
+
+  const ResultScreen({super.key, this.historyRecord});
 
   @override
   State<ResultScreen> createState() => _ResultScreenState();
@@ -20,10 +24,12 @@ class _ResultScreenState extends State<ResultScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<DecisionProvider>().saveCurrentDecision();
-      _fetchAiPrescriptionAuto();
-    });
+    if (widget.historyRecord == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        context.read<DecisionProvider>().saveCurrentDecision();
+        _fetchAiPrescriptionAuto();
+      });
+    }
   }
 
   void _fetchAiPrescriptionAuto() async {
@@ -47,10 +53,40 @@ class _ResultScreenState extends State<ResultScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<DecisionProvider>();
-    final score = provider.calculateScore;
-    final blinds = provider.blindSpotRules;
-    final intuits = provider.intuitiveRules;
-    final exempts = provider.exemptRules;
+    final isHistory = widget.historyRecord != null;
+
+    final String title = isHistory ? widget.historyRecord!.title : provider.decisionTitle;
+    final int score = isHistory ? widget.historyRecord!.score : provider.calculateScore;
+    final String? prescription = isHistory ? widget.historyRecord!.prescription : provider.currentPrescription;
+
+    // Kural Listesi Oluşturma (Geçmiş veya Canlı)
+    List<RuleModel> allRules;
+    if (isHistory) {
+      allRules = RulesData.universalRules.map((baseRule) {
+        HonestyLevel level = HonestyLevel.concrete;
+        if (widget.historyRecord!.ruleLevels != null) {
+          final levelName = widget.historyRecord!.ruleLevels![baseRule.id.toString()];
+          level = HonestyLevel.values.firstWhere((e) => e.name == levelName, orElse: () => HonestyLevel.concrete);
+        } else if (widget.historyRecord!.failedRuleIds.contains(baseRule.id)) {
+          level = HonestyLevel.blindSpot;
+        }
+        return RuleModel(
+          id: baseRule.id,
+          stage: baseRule.stage,
+          title: baseRule.title,
+          concept: baseRule.concept,
+          description: baseRule.description,
+          defaultQuestion: baseRule.defaultQuestion,
+          selectedLevel: level,
+        );
+      }).toList();
+    } else {
+      allRules = provider.rules;
+    }
+
+    final blinds = allRules.where((r) => r.selectedLevel == HonestyLevel.blindSpot).toList();
+    final intuits = allRules.where((r) => r.selectedLevel == HonestyLevel.intuitive).toList();
+    final exempts = allRules.where((r) => r.selectedLevel == HonestyLevel.exempt).toList();
 
     Color scoreColor = score >= 80 
         ? const Color(0xFF10B981) 
@@ -68,11 +104,14 @@ class _ResultScreenState extends State<ResultScreen> {
         displayedRules = exempts;
         break;
       default:
-        displayedRules = provider.rules;
+        displayedRules = allRules;
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Bilişsel Teftiş Raporu"), automaticallyImplyLeading: false),
+      appBar: AppBar(
+        title: Text(isHistory ? "Kayıtlı Teftiş Raporu" : "Bilişsel Teftiş Raporu"),
+        automaticallyImplyLeading: isHistory,
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
         child: Column(
@@ -81,6 +120,7 @@ class _ResultScreenState extends State<ResultScreen> {
             // 1. Üst Skor Kartı
             Center(
               child: Container(
+                width: double.infinity,
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                 decoration: BoxDecoration(
                   color: Theme.of(context).colorScheme.surface,
@@ -89,8 +129,8 @@ class _ResultScreenState extends State<ResultScreen> {
                 ),
                 child: Column(
                   children: [
-                    Text("Sağlamlık Skoru", style: TextStyle(color: Colors.grey[400], fontSize: 14)),
-                    const SizedBox(height: 4),
+                    Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+                    const SizedBox(height: 8),
                     Text(
                       "%$score",
                       style: TextStyle(fontSize: 48, fontWeight: FontWeight.bold, color: scoreColor),
@@ -103,9 +143,9 @@ class _ResultScreenState extends State<ResultScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
 
-            // 2. AI Reçetesi Kartı (Doğrudan Ekranda)
+            // 2. AI Reçetesi Kartı
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(18),
@@ -129,12 +169,12 @@ class _ResultScreenState extends State<ResultScreen> {
                       ),
                       if (_isLoadingAi)
                         const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                      else if (provider.currentPrescription != null)
+                      else if (prescription != null)
                         IconButton(
                           icon: const Icon(Icons.copy, size: 16, color: Color(0xFF38BDF8)),
                           tooltip: "Reçeteyi Kopyala",
                           onPressed: () {
-                            Clipboard.setData(ClipboardData(text: provider.currentPrescription!));
+                            Clipboard.setData(ClipboardData(text: prescription));
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(content: Text("AI Reçetesi panoya kopyalandı!")),
                             );
@@ -150,7 +190,7 @@ class _ResultScreenState extends State<ResultScreen> {
                     )
                   else
                     Text(
-                      provider.currentPrescription ?? "Reçete oluşturulamadı.",
+                      prescription ?? "Bu karar için bir reçete oluşturulmamış.",
                       style: const TextStyle(fontSize: 14, height: 1.5),
                     ),
                 ],
@@ -165,7 +205,7 @@ class _ResultScreenState extends State<ResultScreen> {
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: [
-                  _buildFilterChip(0, "Tümü (${provider.rules.length})"),
+                  _buildFilterChip(0, "Tümü (${allRules.length})"),
                   const SizedBox(width: 8),
                   _buildFilterChip(1, "Kör Noktalar (${blinds.length})", color: Colors.redAccent),
                   const SizedBox(width: 8),
@@ -238,7 +278,11 @@ class _ResultScreenState extends State<ResultScreen> {
                       foregroundColor: const Color(0xFF38BDF8),
                     ),
                     onPressed: () {
-                      final md = provider.generateMarkdownReport();
+                      final md = provider.generateMarkdownReport(
+                        title: title,
+                        score: score,
+                        failedIds: blinds.map((r) => r.id).toList(),
+                      );
                       Clipboard.setData(ClipboardData(text: md));
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text("Tüm rapor panoya kopyalandı!")),
@@ -251,7 +295,7 @@ class _ResultScreenState extends State<ResultScreen> {
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
                     onPressed: () => Navigator.pop(context),
-                    child: const Text("Tamamla"),
+                    child: Text(isHistory ? "Geri Dön" : "Tamamla"),
                   ),
                 ),
               ],

@@ -6,7 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../providers/decision_provider.dart';
 import 'wizard_screen.dart';
-import 'decision_detail_sheet.dart';
+import 'result_screen.dart';
 import 'analytics_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -169,24 +169,21 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 onSubmitted: (_) => _startDecision(context),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
 
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: _quickTemplates.map((template) {
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8.0),
-                      child: ActionChip(
-                        label: Text(template, style: const TextStyle(fontSize: 12)),
-                        backgroundColor: Theme.of(context).colorScheme.surface,
-                        onPressed: () {
-                          _controller.text = template;
-                        },
-                      ),
-                    );
-                  }).toList(),
-                ),
+              // Responsive Wrap (Taşmayı Önleyen Esnek Yapı)
+              Wrap(
+                spacing: 8.0,
+                runSpacing: 8.0,
+                children: _quickTemplates.map((template) {
+                  return ActionChip(
+                    label: Text(template, style: const TextStyle(fontSize: 12)),
+                    backgroundColor: Theme.of(context).colorScheme.surface,
+                    onPressed: () {
+                      _controller.text = template;
+                    },
+                  );
+                }).toList(),
               ),
               const SizedBox(height: 16),
 
@@ -232,18 +229,18 @@ class _HomeScreenState extends State<HomeScreen> {
                             child: InkWell(
                               borderRadius: BorderRadius.circular(12),
                               onTap: () {
-                                showModalBottomSheet(
-                                  context: context,
-                                  isScrollControlled: true,
-                                  backgroundColor: Colors.transparent,
-                                  builder: (_) => DecisionDetailSheet(record: record),
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => ResultScreen(historyRecord: record),
+                                  ),
                                 );
                               },
                               child: ListTile(
                                 leading: const Icon(Icons.psychology_outlined, color: Color(0xFF38BDF8)),
                                 title: Text(record.title, style: const TextStyle(fontWeight: FontWeight.bold)),
                                 subtitle: Text(
-                                  DateFormat('dd MMM, HH:mm').format(record.date),
+                                  DateFormat('dd MMM yyyy, HH:mm').format(record.date),
                                   style: const TextStyle(fontSize: 12),
                                 ),
                                 trailing: Row(

@@ -16,6 +16,39 @@ class _WizardScreenState extends State<WizardScreen> {
   final PageController _pageController = PageController();
   int _currentIndex = 0;
 
+  void _handleBackNavigation(BuildContext context) {
+    if (_currentIndex > 0) {
+      _pageController.previousPage(
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeInOut,
+      );
+    } else {
+      _showExitConfirmation(context);
+    }
+  }
+
+  void _showExitConfirmation(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Theme.of(ctx).colorScheme.surface,
+        title: const Text("Testten Çıkılsın mı?"),
+        content: const Text("Şu anki ilerlemeniz ve cevaplarınız silinecektir."),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Devam Et")),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            onPressed: () {
+              Navigator.pop(ctx);
+              Navigator.pop(context);
+            },
+            child: const Text("Çık"),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _selectLevel(BuildContext context, RuleModel rule, HonestyLevel level, int total) {
     context.read<DecisionProvider>().answerRule(rule.id, level);
 
@@ -37,131 +70,143 @@ class _WizardScreenState extends State<WizardScreen> {
     final provider = context.watch<DecisionProvider>();
     final rules = provider.rules;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text("Adım ${_currentIndex + 1} / ${rules.length}"),
-        centerTitle: true,
-      ),
-      body: PageView.builder(
-        controller: _pageController,
-        physics: const NeverScrollableScrollPhysics(),
-        onPageChanged: (i) => setState(() => _currentIndex = i),
-        itemCount: rules.length,
-        itemBuilder: (context, index) {
-          final rule = rules[index];
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) {
+          _handleBackNavigation(context);
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => _handleBackNavigation(context),
+          ),
+          title: Text("Adım ${_currentIndex + 1} / ${rules.length}"),
+          centerTitle: true,
+        ),
+        body: PageView.builder(
+          controller: _pageController,
+          physics: const NeverScrollableScrollPhysics(),
+          onPageChanged: (i) => setState(() => _currentIndex = i),
+          itemCount: rules.length,
+          itemBuilder: (context, index) {
+            final rule = rules[index];
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  rule.stage.name.toUpperCase(),
-                  style: const TextStyle(
-                    color: Color(0xFF38BDF8),
-                    letterSpacing: 2,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
+            return SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    rule.stage.name.toUpperCase(),
+                    style: const TextStyle(
+                      color: Color(0xFF38BDF8),
+                      letterSpacing: 2,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  rule.title,
-                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                ),
-                Text(
-                  rule.concept,
-                  style: const TextStyle(color: Colors.grey, fontSize: 13, fontStyle: FontStyle.italic),
-                ),
-                const SizedBox(height: 18),
+                  const SizedBox(height: 6),
+                  Text(
+                    rule.title,
+                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  ),
+                  Text(
+                    rule.concept,
+                    style: const TextStyle(color: Colors.grey, fontSize: 13, fontStyle: FontStyle.italic),
+                  ),
+                  const SizedBox(height: 18),
 
-                // Dinamik Soru Kartı
-                Container(
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surface,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFF38BDF8).withValues(alpha: 0.35), width: 1.5),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Row(
-                        children: [
-                          Icon(Icons.psychology, color: Color(0xFF38BDF8), size: 18),
-                          SizedBox(width: 8),
-                          Text("Bu Karara Özel Sorgu:", style: TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold, fontSize: 13)),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        rule.activeQuestion,
-                        style: const TextStyle(fontSize: 16, height: 1.45, fontWeight: FontWeight.w500),
-                      ),
-                      if (rule.dynamicTrap != null) ...[
-                        const Divider(height: 20),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                  // Dinamik Soru Kartı
+                  Container(
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surface,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFF38BDF8).withValues(alpha: 0.35), width: 1.5),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Row(
                           children: [
-                            const Text("⚠️ ", style: TextStyle(fontSize: 13)),
-                            Expanded(
-                              child: Text(
-                                "Tuzak: ${rule.dynamicTrap!}",
-                                style: const TextStyle(color: Colors.orange, fontSize: 12, height: 1.35),
-                              ),
-                            ),
+                            Icon(Icons.psychology, color: Color(0xFF38BDF8), size: 18),
+                            SizedBox(width: 8),
+                            Text("Bu Karara Özel Sorgu:", style: TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold, fontSize: 13)),
                           ],
                         ),
+                        const SizedBox(height: 10),
+                        Text(
+                          rule.activeQuestion,
+                          style: const TextStyle(fontSize: 16, height: 1.45, fontWeight: FontWeight.w500),
+                        ),
+                        if (rule.dynamicTrap != null) ...[
+                          const Divider(height: 20),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text("⚠️ ", style: TextStyle(fontSize: 13)),
+                              Expanded(
+                                child: Text(
+                                  "Tuzak: ${rule.dynamicTrap!}",
+                                  style: const TextStyle(color: Colors.orange, fontSize: 12, height: 1.35),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
-                ),
 
-                const SizedBox(height: 24),
-                const Text("Dürüst Değerlendirmen:", style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 10),
+                  const SizedBox(height: 24),
+                  const Text("Dürüst Değerlendirmen:", style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 10),
 
-                // 4 Seviyeli Kartlar
-                _buildChoiceButton(
-                  context: context,
-                  rule: rule,
-                  level: HonestyLevel.blindSpot,
-                  color: const Color(0xFFEF4444),
-                  icon: Icons.cancel_outlined,
-                  total: rules.length,
-                ),
-                const SizedBox(height: 8),
-                _buildChoiceButton(
-                  context: context,
-                  rule: rule,
-                  level: HonestyLevel.intuitive,
-                  color: Colors.orange,
-                  icon: Icons.help_outline,
-                  total: rules.length,
-                ),
-                const SizedBox(height: 8),
-                _buildChoiceButton(
-                  context: context,
-                  rule: rule,
-                  level: HonestyLevel.concrete,
-                  color: const Color(0xFF10B981),
-                  icon: Icons.check_circle_outline,
-                  total: rules.length,
-                ),
-                const SizedBox(height: 8),
-                _buildChoiceButton(
-                  context: context,
-                  rule: rule,
-                  level: HonestyLevel.exempt,
-                  color: Colors.blueGrey,
-                  icon: Icons.remove_circle_outline,
-                  total: rules.length,
-                ),
-                const SizedBox(height: 16),
-              ],
-            ),
-          );
-        },
+                  // 4 Seviyeli Kartlar
+                  _buildChoiceButton(
+                    context: context,
+                    rule: rule,
+                    level: HonestyLevel.blindSpot,
+                    color: const Color(0xFFEF4444),
+                    icon: Icons.cancel_outlined,
+                    total: rules.length,
+                  ),
+                  const SizedBox(height: 8),
+                  _buildChoiceButton(
+                    context: context,
+                    rule: rule,
+                    level: HonestyLevel.intuitive,
+                    color: Colors.orange,
+                    icon: Icons.help_outline,
+                    total: rules.length,
+                  ),
+                  const SizedBox(height: 8),
+                  _buildChoiceButton(
+                    context: context,
+                    rule: rule,
+                    level: HonestyLevel.concrete,
+                    color: const Color(0xFF10B981),
+                    icon: Icons.check_circle_outline,
+                    total: rules.length,
+                  ),
+                  const SizedBox(height: 8),
+                  _buildChoiceButton(
+                    context: context,
+                    rule: rule,
+                    level: HonestyLevel.exempt,
+                    color: Colors.blueGrey,
+                    icon: Icons.remove_circle_outline,
+                    total: rules.length,
+                  ),
+                  const SizedBox(height: 16),
+                ],
+              ),
+            );
+          },
+        ),
       ),
     );
   }

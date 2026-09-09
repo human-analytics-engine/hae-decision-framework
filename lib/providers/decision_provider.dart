@@ -106,14 +106,41 @@ class DecisionProvider extends ChangeNotifier {
     return freq;
   }
 
+  // 3 Aşama Başarı İstatistikleri
+  Map<Stage, int> get stageSuccessRates {
+    Map<Stage, int> rates = {Stage.clearMind: 0, Stage.testReality: 0, Stage.survival: 0};
+    if (rules.isEmpty) return rates;
+
+    for (var stage in Stage.values) {
+      final stageRules = rules.where((r) => r.stage == stage && r.selectedLevel != HonestyLevel.exempt).toList();
+      if (stageRules.isEmpty) {
+        rates[stage] = 100;
+      } else {
+        int earned = stageRules.fold(0, (sum, r) => sum + (r.selectedLevel?.points ?? 0));
+        int max = stageRules.length * 2;
+        rates[stage] = ((earned / max) * 100).round();
+      }
+    }
+    return rates;
+  }
+
   Future<void> saveCurrentDecision() async {
     final prefs = await SharedPreferences.getInstance();
+
+    Map<String, String> levelsMap = {};
+    for (var r in rules) {
+      if (r.selectedLevel != null) {
+        levelsMap[r.id.toString()] = r.selectedLevel!.name;
+      }
+    }
+
     final newRecord = DecisionHistory(
       title: decisionTitle,
       score: calculateScore,
       date: DateTime.now(),
       failedRuleIds: blindSpotRules.map((r) => r.id).toList(),
       prescription: currentPrescription,
+      ruleLevels: levelsMap,
     );
 
     history.insert(0, newRecord);
@@ -144,7 +171,7 @@ class DecisionProvider extends ChangeNotifier {
     final reportScore = score ?? calculateScore;
 
     StringBuffer sb = StringBuffer();
-    sb.writeln("# 🧠 Bilişsel Karar Teftiş Raporu (HAE v2.1)");
+    sb.writeln("# 🧠 Bilişsel Karar Teftiş Raporu (HAE v2.2)");
     sb.writeln("**Karar:** $reportTitle");
     sb.writeln("**Sağlamlık Skoru:** %$reportScore");
     sb.writeln("**Tarih:** ${DateTime.now().toLocal()}\n");
