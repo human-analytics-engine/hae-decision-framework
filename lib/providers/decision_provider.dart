@@ -4,15 +4,17 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/rule_model.dart';
 import '../core/rules_data.dart';
 import '../models/decision_history_model.dart';
+import '../models/ai_provider.dart';
 import '../services/ai_advisor_service.dart';
 
 class DecisionProvider extends ChangeNotifier {
-  static const String appVersion = "v2.2.0";
+  static const String appVersion = "v2.3.0";
 
   String decisionTitle = "";
   List<RuleModel> rules = [];
   List<DecisionHistory> history = [];
-  String? geminiApiKey;
+  String? apiKey;
+  AiProvider selectedProvider = AiProvider.gemini;
   String? currentPrescription;
   bool isGeneratingQuestions = false;
 
@@ -20,19 +22,20 @@ class DecisionProvider extends ChangeNotifier {
     loadSettingsAndHistory();
   }
 
-  void setApiKey(String key) async {
-    geminiApiKey = key.trim();
+  void setProviderAndKey(AiProvider provider, String key) async {
+    selectedProvider = provider;
+    apiKey = key.trim();
     final prefs = await SharedPreferences.getInstance();
-    if (geminiApiKey!.isEmpty) {
-      await prefs.remove('gemini_api_key');
-      geminiApiKey = null;
+    await prefs.setString('ai_provider', provider.name);
+    if (apiKey!.isEmpty) {
+      await prefs.remove('ai_api_key');
+      apiKey = null;
     } else {
-      await prefs.setString('gemini_api_key', geminiApiKey!);
+      await prefs.setString('ai_api_key', apiKey!);
     }
     notifyListeners();
   }
 
-  // Reçete üretildiği an hafızadaki geçmiş kaydını da anında günceller (BUG FIX)
   void setPrescription(String p, {String? targetTitle}) async {
     currentPrescription = p;
     final titleToMatch = targetTitle ?? decisionTitle;
@@ -70,10 +73,11 @@ class DecisionProvider extends ChangeNotifier {
       defaultQuestion: r.defaultQuestion,
     )).toList();
 
-    if (geminiApiKey != null && geminiApiKey!.isNotEmpty) {
+    if (apiKey != null && apiKey!.isNotEmpty) {
       final customMap = await AiAdvisorService.generateCustomQuestions(
         decisionTitle: title,
-        apiKey: geminiApiKey,
+        provider: selectedProvider,
+        apiKey: apiKey,
       );
 
       if (customMap.isNotEmpty) {
@@ -175,7 +179,15 @@ class DecisionProvider extends ChangeNotifier {
 
   Future<void> loadSettingsAndHistory() async {
     final prefs = await SharedPreferences.getInstance();
-    geminiApiKey = prefs.getString('gemini_api_key');
+    final provName = prefs.getString('ai_provider');
+    if (provName != null) {
+      selectedProvider = AiProvider.values.firstWhere(
+        (e) => e.name == provName,
+        orElse: () => AiProvider.gemini,
+      );
+    }
+    apiKey = prefs.getString('ai_api_key') ?? prefs.getString('gemini_api_key');
+
     List<String>? historyJsonList = prefs.getStringList('decision_history');
     if (historyJsonList != null) {
       history = historyJsonList.map((jsonStr) => DecisionHistory.fromJson(jsonStr)).toList();

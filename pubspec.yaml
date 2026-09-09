@@ -2,7 +2,7 @@ name: hae_decision_framework
 description: "HAE Sokratik Karar Laboratuvarı: Bilişsel filtreleme ve anti-öz-aldatma motoru."
 publish_to: 'none'
 
-version: 2.2.0+3
+version: 2.3.0+4
 
 environment:
   sdk: ^3.13.2
@@ -15,6 +15,7 @@ dependencies:
   shared_preferences: ^2.5.5
   intl: ^0.20.3
   http: ^1.6.0
+  flutter_markdown: ^0.7.7+1
 
 dev_dependencies:
   flutter_test:

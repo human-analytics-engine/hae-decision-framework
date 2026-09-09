@@ -1,6 +1,7 @@
 // lib/screens/result_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:provider/provider.dart';
 import '../providers/decision_provider.dart';
 import '../models/decision_history_model.dart';
@@ -42,7 +43,8 @@ class _ResultScreenState extends State<ResultScreen> {
       failedRules: provider.blindSpotRules,
       weakRules: provider.intuitiveRules,
       exemptRules: provider.exemptRules,
-      apiKey: provider.geminiApiKey,
+      provider: provider.selectedProvider,
+      apiKey: provider.apiKey,
     );
 
     if (!mounted) return;
@@ -59,7 +61,8 @@ class _ResultScreenState extends State<ResultScreen> {
       failedRules: blinds,
       weakRules: intuits,
       exemptRules: exempts,
-      apiKey: provider.geminiApiKey,
+      provider: provider.selectedProvider,
+      apiKey: provider.apiKey,
     );
 
     if (!mounted) return;
@@ -71,11 +74,11 @@ class _ResultScreenState extends State<ResultScreen> {
   Widget build(BuildContext context) {
     final provider = context.watch<DecisionProvider>();
     final isHistory = widget.historyRecord != null;
+    final isNarrow = MediaQuery.of(context).size.width < 380; // Galaxy Z Fold kontrolü
 
     final String title = isHistory ? widget.historyRecord!.title : provider.decisionTitle;
     final int score = isHistory ? widget.historyRecord!.score : provider.calculateScore;
     
-    // Geçmiş kayıtlarda güncellenen reçeteyi provider'dan dinamik oku
     String? prescription;
     if (isHistory) {
       final match = provider.history.firstWhere((h) => h.title == title, orElse: () => widget.historyRecord!);
@@ -112,9 +115,7 @@ class _ResultScreenState extends State<ResultScreen> {
     final intuits = allRules.where((r) => r.selectedLevel == HonestyLevel.intuitive).toList();
     final exempts = allRules.where((r) => r.selectedLevel == HonestyLevel.exempt).toList();
 
-    Color scoreColor = score >= 80 
-        ? const Color(0xFF10B981) 
-        : (score >= 50 ? Colors.orange : Colors.redAccent);
+    Color scoreColor = score >= 80 ? const Color(0xFF10B981) : (score >= 50 ? Colors.orange : Colors.redAccent);
 
     List<RuleModel> displayedRules;
     switch (_activeFilter) {
@@ -133,46 +134,43 @@ class _ResultScreenState extends State<ResultScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isHistory ? "Kayıtlı Teftiş Raporu" : "Bilişsel Teftiş Raporu"),
+        title: Text(isHistory ? "Kayıtlı Teftiş Raporu" : "Bilişsel Teftiş Raporu", style: TextStyle(fontSize: isNarrow ? 15 : 18)),
         automaticallyImplyLeading: isHistory,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20.0),
+        padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1. Skor Kartı
+            // 1. Üst Skor Kartı
             Center(
               child: Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                 decoration: BoxDecoration(
                   color: Theme.of(context).colorScheme.surface,
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: scoreColor.withValues(alpha: 0.3)),
                 ),
                 child: Column(
                   children: [
-                    Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
-                    const SizedBox(height: 8),
-                    Text(
-                      "%$score",
-                      style: TextStyle(fontSize: 48, fontWeight: FontWeight.bold, color: scoreColor),
-                    ),
+                    Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+                    const SizedBox(height: 6),
+                    Text("%$score", style: TextStyle(fontSize: 44, fontWeight: FontWeight.bold, color: scoreColor)),
                     Text(
                       score >= 80 ? "Sistematik ve güvenli." : (score >= 50 ? "Riskli varsayımlar var!" : "Kritik bilişsel kör noktalar!"),
-                      style: TextStyle(color: scoreColor, fontSize: 14, fontWeight: FontWeight.w600),
+                      style: TextStyle(color: scoreColor, fontSize: 13, fontWeight: FontWeight.w600),
                     ),
                   ],
                 ),
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 18),
 
-            // 2. AI Reçetesi Kartı
+            // 2. AI Reçetesi Kartı (Gerçek Markdown Render)
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(18),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: const Color(0xFF1E293B),
                 borderRadius: BorderRadius.circular(16),
@@ -184,11 +182,11 @@ class _ResultScreenState extends State<ResultScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Row(
+                      Row(
                         children: [
-                          Icon(Icons.auto_awesome, color: Color(0xFF38BDF8), size: 20),
-                          SizedBox(width: 8),
-                          Text("AI Kurtarma Reçetesi", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                          const Icon(Icons.auto_awesome, color: Color(0xFF38BDF8), size: 18),
+                          const SizedBox(width: 8),
+                          Text("${provider.selectedProvider.label} Reçetesi", style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
                         ],
                       ),
                       if (_isLoadingAi)
@@ -199,30 +197,33 @@ class _ResultScreenState extends State<ResultScreen> {
                           tooltip: "Reçeteyi Kopyala",
                           onPressed: () {
                             Clipboard.setData(ClipboardData(text: prescription!));
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text("AI Reçetesi panoya kopyalandı!")),
-                            );
+                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Reçete panoya kopyalandı!")));
                           },
                         ),
                     ],
                   ),
-                  const Divider(height: 20),
+                  const Divider(height: 18),
                   if (_isLoadingAi)
                     const Padding(
                       padding: EdgeInsets.symmetric(vertical: 16.0),
-                      child: Center(child: Text("Gemini 3.5 reçeteyi hazırlıyor...", style: TextStyle(color: Colors.grey))),
+                      child: Center(child: Text("Frontier AI reçeteyi hazırlıyor...", style: TextStyle(color: Colors.grey))),
                     )
                   else if (prescription != null)
-                    Text(
-                      prescription,
-                      style: const TextStyle(fontSize: 14, height: 1.5),
+                    MarkdownBody(
+                      data: prescription,
+                      styleSheet: MarkdownStyleSheet(
+                        h3: const TextStyle(color: Color(0xFF38BDF8), fontSize: 15, fontWeight: FontWeight.bold, height: 1.6),
+                        p: const TextStyle(fontSize: 13, height: 1.5, color: Colors.white70),
+                        strong: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                        listBullet: const TextStyle(color: Color(0xFF38BDF8)),
+                      ),
                     )
                   else ...[
                     const Text("Bu karar için henüz bir reçete oluşturulmamış.", style: TextStyle(color: Colors.grey)),
                     const SizedBox(height: 10),
                     ElevatedButton.icon(
                       icon: const Icon(Icons.bolt, size: 16),
-                      label: const Text("Şimdi AI Reçetesi Üret"),
+                      label: const Text("Şimdi Reçete Üret"),
                       style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF38BDF8)),
                       onPressed: () => _generatePrescriptionForHistory(title, blinds, intuits, exempts),
                     ),
@@ -230,28 +231,28 @@ class _ResultScreenState extends State<ResultScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
 
             // 3. Filtre Çipleri
-            const Text("Kural Dökümü", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 10),
+            const Text("Kural Dökümü", style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: [
                   _buildFilterChip(0, "Tümü (${allRules.length})"),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 6),
                   _buildFilterChip(1, "Kör Noktalar (${blinds.length})", color: Colors.redAccent),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 6),
                   _buildFilterChip(2, "Yarım Planlar (${intuits.length})", color: Colors.orange),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 6),
                   _buildFilterChip(3, "Muaf (${exempts.length})", color: Colors.blueGrey),
                 ],
               ),
             ),
             const SizedBox(height: 12),
 
-            // 4. Kurallar Listesi
+            // 4. Kurallar Listesi (344px'e Sığan Full Genişlikli Kartlar)
             ListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -282,58 +283,119 @@ class _ResultScreenState extends State<ResultScreen> {
                     itemIcon = Icons.circle_outlined;
                 }
 
-                return Card(
-                  color: Theme.of(context).colorScheme.surface,
-                  margin: const EdgeInsets.only(bottom: 8),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  child: ListTile(
-                    leading: Icon(itemIcon, color: itemColor, size: 22),
-                    title: Text(rule.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                    subtitle: Text(rule.activeQuestion, style: const TextStyle(fontSize: 12, height: 1.3)),
-                    trailing: Text(
-                      rule.selectedLevel?.label ?? "",
-                      style: TextStyle(color: itemColor, fontSize: 11, fontWeight: FontWeight.w600),
-                    ),
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.white10),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(itemIcon, color: itemColor, size: 18),
+                              const SizedBox(width: 8),
+                              Text(rule.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                            ],
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: itemColor.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              rule.selectedLevel?.label ?? "",
+                              style: TextStyle(color: itemColor, fontSize: 10, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        rule.activeQuestion,
+                        style: const TextStyle(fontSize: 12, height: 1.4, color: Colors.white70),
+                      ),
+                    ],
                   ),
                 );
               },
             ),
 
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    icon: const Icon(Icons.copy, size: 16),
-                    label: const Text("Tüm Raporu Kopyala"),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      side: const BorderSide(color: Color(0xFF38BDF8)),
-                      foregroundColor: const Color(0xFF38BDF8),
+            const SizedBox(height: 16),
+
+            // 5. Responsive Alt Butonlar (380px Altında Column, Üstünde Row)
+            if (isNarrow) ...[
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.copy, size: 16),
+                  label: const Text("Tüm Raporu Kopyala"),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    side: const BorderSide(color: Color(0xFF38BDF8)),
+                    foregroundColor: const Color(0xFF38BDF8),
+                  ),
+                  onPressed: () {
+                    final md = provider.generateMarkdownReport(
+                      title: title,
+                      score: score,
+                      failedIds: blinds.map((r) => r.id).toList(),
+                    );
+                    Clipboard.setData(ClipboardData(text: md));
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Tüm rapor kopyalandı!")));
+                  },
+                ),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(isHistory ? "Geri Dön" : "Tamamla"),
+                ),
+              ),
+            ] else ...[
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.copy, size: 16),
+                      label: const Text("Tüm Raporu Kopyala"),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        side: const BorderSide(color: Color(0xFF38BDF8)),
+                        foregroundColor: const Color(0xFF38BDF8),
+                      ),
+                      onPressed: () {
+                        final md = provider.generateMarkdownReport(
+                          title: title,
+                          score: score,
+                          failedIds: blinds.map((r) => r.id).toList(),
+                        );
+                        Clipboard.setData(ClipboardData(text: md));
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Tüm rapor kopyalandı!")));
+                      },
                     ),
-                    onPressed: () {
-                      final md = provider.generateMarkdownReport(
-                        title: title,
-                        score: score,
-                        failedIds: blinds.map((r) => r.id).toList(),
-                      );
-                      Clipboard.setData(ClipboardData(text: md));
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text("Tüm rapor panoya kopyalandı!")),
-                      );
-                    },
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
-                    onPressed: () => Navigator.pop(context),
-                    child: Text(isHistory ? "Geri Dön" : "Tamamla"),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
+                      onPressed: () => Navigator.pop(context),
+                      child: Text(isHistory ? "Geri Dön" : "Tamamla"),
+                    ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
+            ],
           ],
         ),
       ),
@@ -349,7 +411,7 @@ class _ResultScreenState extends State<ResultScreen> {
       labelStyle: TextStyle(
         color: isSelected ? (color ?? const Color(0xFF38BDF8)) : Colors.grey,
         fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-        fontSize: 12,
+        fontSize: 11,
       ),
       onSelected: (_) => setState(() => _activeFilter = index),
     );
