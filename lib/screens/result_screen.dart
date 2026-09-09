@@ -1,5 +1,6 @@
 // lib/screens/result_screen.dart
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/decision_provider.dart';
 
@@ -14,7 +15,6 @@ class _ResultScreenState extends State<ResultScreen> {
   @override
   void initState() {
     super.initState();
-    // Ekran açılır açılmaz kararı kaydet
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<DecisionProvider>().saveCurrentDecision();
     });
@@ -79,12 +79,35 @@ class _ResultScreenState extends State<ResultScreen> {
                 ),
               ),
             ],
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text("Ana Sayfaya Dön", style: TextStyle(fontSize: 18)),
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.copy, size: 16),
+                    label: const Text("Raporu Kopyala"),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      side: const BorderSide(color: Color(0xFF38BDF8)),
+                      foregroundColor: const Color(0xFF38BDF8),
+                    ),
+                    onPressed: () {
+                      final md = provider.generateMarkdownReport();
+                      Clipboard.setData(ClipboardData(text: md));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("Markdown raporu panoya kopyalandı!")),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text("Tamamla"),
+                  ),
+                ),
+              ],
             ),
           ],
         ),

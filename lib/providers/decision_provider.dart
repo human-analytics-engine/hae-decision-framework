@@ -11,10 +11,9 @@ class DecisionProvider extends ChangeNotifier {
   List<DecisionHistory> history = [];
 
   DecisionProvider() {
-    loadHistory(); // Uygulama açıldığında geçmişi yükle
+    loadHistory();
   }
 
-  // Yeni test başlat
   void startNewDecision(String title) {
     decisionTitle = title;
     rules = RulesData.universalRules.map((rule) {
@@ -30,7 +29,6 @@ class DecisionProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Kural cevapla
   void answerRule(int ruleId, bool passed) {
     final index = rules.indexWhere((r) => r.id == ruleId);
     if (index != -1) {
@@ -39,18 +37,16 @@ class DecisionProvider extends ChangeNotifier {
     }
   }
 
-  // Skor hesapla
   int get calculateScore {
     int passedCount = rules.where((r) => r.isPassed).length;
     return (passedCount / rules.length * 100).toInt();
   }
 
-  // Başarısız kurallar
   List<RuleModel> get failedRules {
     return rules.where((r) => !r.isPassed).toList();
   }
 
-  // --- LOCAL STORAGE İŞLEMLERİ ---
+  // --- LOCAL STORAGE ---
 
   Future<void> saveCurrentDecision() async {
     final prefs = await SharedPreferences.getInstance();
@@ -59,10 +55,10 @@ class DecisionProvider extends ChangeNotifier {
       title: decisionTitle,
       score: calculateScore,
       date: DateTime.now(),
+      failedRuleIds: failedRules.map((r) => r.id).toList(),
     );
 
-    history.insert(0, newRecord); // En başa ekle (en yeni)
-    
+    history.insert(0, newRecord);
     List<String> historyJsonList = history.map((h) => h.toJson()).toList();
     await prefs.setStringList('decision_history', historyJsonList);
     notifyListeners();
@@ -83,5 +79,31 @@ class DecisionProvider extends ChangeNotifier {
     await prefs.remove('decision_history');
     history.clear();
     notifyListeners();
+  }
+
+  // --- EXPORT: MARKDOWN RAPORU OLUŞTURUCU ---
+  String generateMarkdownReport({String? title, int? score, List<int>? failedIds}) {
+    final reportTitle = title ?? decisionTitle;
+    final reportScore = score ?? calculateScore;
+    final failedList = failedIds ?? failedRules.map((r) => r.id).toList();
+
+    StringBuffer sb = StringBuffer();
+    sb.writeln("# 🧠 Bilişsel Karar Teftiş Raporu (HAE)");
+    sb.writeln("**Karar:** $reportTitle");
+    sb.writeln("**Sağlamlık Skoru:** %$reportScore");
+    sb.writeln("**Tarih:** ${DateTime.now().toLocal()}\n");
+    sb.writeln("---");
+    sb.writeln("### 🛡️ 10 Kural Teftiş Sonuçları:\n");
+
+    for (var rule in RulesData.universalRules) {
+      bool passed = !failedList.contains(rule.id);
+      sb.writeln("${passed ? '✅' : '❌'} **${rule.title}**: ${passed ? 'GEÇTİ' : 'BAŞARISIZ (Kırılganlık)'}");
+      if (!passed) {
+        sb.writeln("   > *Uyarı:* ${rule.description}");
+      }
+    }
+
+    sb.writeln("\n---\n*Human Analytics Engine (HAE) - Decision Framework tarafından üretilmiştir.*");
+    return sb.toString();
   }
 }

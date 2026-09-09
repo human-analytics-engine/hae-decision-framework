@@ -5,11 +5,13 @@ class DecisionHistory {
   final String title;
   final int score;
   final DateTime date;
+  final List<int> failedRuleIds;
 
   DecisionHistory({
     required this.title,
     required this.score,
     required this.date,
+    required this.failedRuleIds,
   });
 
   Map<String, dynamic> toMap() {
@@ -17,14 +19,16 @@ class DecisionHistory {
       'title': title,
       'score': score,
       'date': date.toIso8601String(),
+      'failedRuleIds': failedRuleIds,
     };
   }
 
   factory DecisionHistory.fromMap(Map<String, dynamic> map) {
     return DecisionHistory(
-      title: map['title'],
-      score: map['score'],
+      title: map['title'] ?? '',
+      score: map['score'] ?? 0,
       date: DateTime.parse(map['date']),
+      failedRuleIds: List<int>.from(map['failedRuleIds'] ?? []),
     );
   }
 
