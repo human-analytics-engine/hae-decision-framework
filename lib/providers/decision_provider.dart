@@ -4,25 +4,18 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/rule_model.dart';
 import '../core/rules_data.dart';
 import '../models/decision_history_model.dart';
-import '../models/category_model.dart';
 import '../services/ai_advisor_service.dart';
 
 class DecisionProvider extends ChangeNotifier {
   String decisionTitle = "";
-  DecisionCategory selectedCategory = DecisionCategory.investment;
   List<RuleModel> rules = [];
   List<DecisionHistory> history = [];
   String? geminiApiKey;
-  String? currentPrescription; // AI Reçetesini hafızada tutar
+  String? currentPrescription;
   bool isGeneratingQuestions = false;
 
   DecisionProvider() {
     loadSettingsAndHistory();
-  }
-
-  void setCategory(DecisionCategory cat) {
-    selectedCategory = cat;
-    notifyListeners();
   }
 
   void setApiKey(String key) async {
@@ -39,7 +32,7 @@ class DecisionProvider extends ChangeNotifier {
 
   Future<void> startNewDecision(String title) async {
     decisionTitle = title;
-    currentPrescription = null; // Sıfırla
+    currentPrescription = null;
     isGeneratingQuestions = true;
     notifyListeners();
 
@@ -55,7 +48,6 @@ class DecisionProvider extends ChangeNotifier {
     if (geminiApiKey != null && geminiApiKey!.isNotEmpty) {
       final customMap = await AiAdvisorService.generateCustomQuestions(
         decisionTitle: title,
-        category: selectedCategory,
         apiKey: geminiApiKey,
       );
 
@@ -110,7 +102,6 @@ class DecisionProvider extends ChangeNotifier {
     return freq;
   }
 
-// lib/providers/decision_provider.dart içindeki saveCurrentDecision fonksiyonu:
   Future<void> saveCurrentDecision() async {
     final prefs = await SharedPreferences.getInstance();
     final newRecord = DecisionHistory(
@@ -118,8 +109,7 @@ class DecisionProvider extends ChangeNotifier {
       score: calculateScore,
       date: DateTime.now(),
       failedRuleIds: blindSpotRules.map((r) => r.id).toList(),
-      category: selectedCategory,
-      prescription: currentPrescription, // Reçeteyi de kaydettik!
+      prescription: currentPrescription,
     );
 
     history.insert(0, newRecord);
@@ -145,16 +135,13 @@ class DecisionProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Hem kuralları hem AI Reçetesini tek bir Markdown raporunda birleştirir
-  String generateMarkdownReport({String? title, int? score, List<int>? failedIds, DecisionCategory? category}) {
+  String generateMarkdownReport({String? title, int? score, List<int>? failedIds}) {
     final reportTitle = title ?? decisionTitle;
     final reportScore = score ?? calculateScore;
-    final reportCategory = category ?? selectedCategory;
 
     StringBuffer sb = StringBuffer();
     sb.writeln("# 🧠 Bilişsel Karar Teftiş Raporu (HAE v2.0)");
     sb.writeln("**Karar:** $reportTitle");
-    sb.writeln("**Kategori:** ${reportCategory.label}");
     sb.writeln("**Sağlamlık Skoru:** %$reportScore");
     sb.writeln("**Tarih:** ${DateTime.now().toLocal()}\n");
     sb.writeln("---");
@@ -172,7 +159,7 @@ class DecisionProvider extends ChangeNotifier {
 
     if (currentPrescription != null && currentPrescription!.isNotEmpty) {
       sb.writeln("---\n");
-      sb.writeln("## 🤖 AI Bilişsel Kurtarma Reçetesi");
+      sb.writeln("## 🤖 AI Bilişsel Kurtarma Reçetesi\n");
       sb.writeln(currentPrescription);
       sb.writeln();
     }

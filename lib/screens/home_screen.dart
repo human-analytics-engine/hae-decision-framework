@@ -2,9 +2,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import 'dart:js' as js; // Web speech için
+import 'dart:js' as js;
 import '../providers/decision_provider.dart';
-import '../models/category_model.dart';
 import 'wizard_screen.dart';
 import 'decision_detail_sheet.dart';
 import 'analytics_screen.dart';
@@ -23,8 +22,8 @@ class _HomeScreenState extends State<HomeScreen> {
   final List<String> _quickTemplates = [
     "İşten ayrılıp kendi ajansımı kurmak",
     "Yazılımda Monolith'ten Microservice'e geçmek",
-    "Portföyün %40'ı ile yeni bir hisse/kriptoya girmek",
-    "Şehir değiştirip uzaktan çalışmaya başlamak",
+    "Portföyün %40'ı ile yeni bir yatırıma girmek",
+    "Ortakla yeni bir SaaS ürünü inşa etmek",
   ];
 
   void _startVoiceInput() {
@@ -66,9 +65,9 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 CircularProgressIndicator(color: Color(0xFF38BDF8)),
                 SizedBox(height: 16),
-                Text("Sokratik Sorgu Seti Hazırlanıyor...", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                Text("Gemini 3.5 Bilişsel Sorgu Hazırlıyor...", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                 SizedBox(height: 8),
-                Text("10 evrensel savunma bu karara özel olarak uyarlanıyor.", style: TextStyle(color: Colors.grey, fontSize: 12)),
+                Text("Karar analiz ediliyor ve özel tuzaklar üretiliyor.", style: TextStyle(color: Colors.grey, fontSize: 12)),
               ],
             ),
           ),
@@ -97,7 +96,7 @@ class _HomeScreenState extends State<HomeScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Text(
-              "Google AI Studio anahtarınızı girerseniz kararlarınıza özel dinamik sorular ve AI reçeteleri üretilir.",
+              "Google AI Studio anahtarınızı girdiğinizde Gemini 3.5 Flash Lite motoru devreye girer (Günde 500 ücretsiz analiz).",
               style: TextStyle(fontSize: 13, color: Colors.grey),
             ),
             const SizedBox(height: 16),
@@ -147,7 +146,7 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
               TextField(
                 controller: _controller,
                 decoration: InputDecoration(
@@ -167,7 +166,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 onSubmitted: (_) => _startDecision(context),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
 
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
@@ -186,31 +185,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   }).toList(),
                 ),
               ),
-              const SizedBox(height: 12),
-
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: DecisionCategory.values.map((cat) {
-                    final isSelected = provider.selectedCategory == cat;
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8.0),
-                      child: FilterChip(
-                        selected: isSelected,
-                        label: Row(
-                          children: [
-                            Icon(cat.icon, size: 16, color: isSelected ? Colors.white : cat.color),
-                            const SizedBox(width: 6),
-                            Text(cat.label),
-                          ],
-                        ),
-                        selectedColor: cat.color.withOpacity(0.3),
-                        onSelected: (_) => provider.setCategory(cat),
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
               const SizedBox(height: 16),
 
               SizedBox(
@@ -220,7 +194,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: const Text("Sokratik Filtreden Geçir", style: TextStyle(fontSize: 16)),
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 28),
 
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -263,10 +237,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                 );
                               },
                               child: ListTile(
-                                leading: Icon(record.category.icon, color: record.category.color),
+                                leading: const Icon(Icons.psychology_outlined, color: Color(0xFF38BDF8)),
                                 title: Text(record.title, style: const TextStyle(fontWeight: FontWeight.bold)),
                                 subtitle: Text(
-                                  "${record.category.label} • ${DateFormat('dd MMM, HH:mm').format(record.date)}",
+                                  DateFormat('dd MMM, HH:mm').format(record.date),
                                   style: const TextStyle(fontSize: 12),
                                 ),
                                 trailing: Row(

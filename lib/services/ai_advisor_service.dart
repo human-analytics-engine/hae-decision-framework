@@ -1,97 +1,45 @@
 // lib/services/ai_advisor_service.dart
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import '../models/category_model.dart';
 import '../models/rule_model.dart';
 
 class AiAdvisorService {
-  // Ultra hızlı Lite uç noktası
-  static const String _model = 'gemini-2.5-flash-lite';
+  // Tablonda günlük 500 istek kotası olan modeller
+  static const List<String> _models = [
+    'gemini-3.5-flash-lite',
+    'gemini-3.1-flash-lite',
+    'gemini-2.5-flash',
+  ];
 
   static Future<Map<int, Map<String, String>>> generateCustomQuestions({
     required String decisionTitle,
-    required DecisionCategory category,
     String? apiKey,
   }) async {
     if (apiKey == null || apiKey.trim().isEmpty) return {};
 
-    try {
-      final url = Uri.parse(
-        'https://generativelanguage.googleapis.com/v1beta/models/$_model:generateContent?key=$apiKey',
-      );
+    final prompt = """
+Sen Human Analytics Engine Sokratik Karar Teftişçisisin.
+Kullanıcı şu kararı test ediyor: "$decisionTitle".
+Kararın bağlamını (yazılım, iş, ortaklık, kişisel vb.) kendi zekanla anla ve kategorize et.
 
-      final prompt = """
-Sen Human Analytics Engine Sokratik Karar Sorgulayıcısısın.
-Kullanıcı '${category.label}' kategorisinde şu kararı test ediyor: "$decisionTitle".
-Gereksiz yere her soruya spesifik tarih sıkıştırma; odak noktan mantık hataları, finansal kör noktalar, aşırı özgüven ve riskler olsun.
+10 Evrensel Kuralın her biri için bu karara özel, somut ve acımasız 1 soru ile insanın düşeceği 1 tipik avuntu/tuzak üret.
+Zorlama tarihler sıkıştırma, mantık ve stratejiye odaklan.
 
-10 kuralın her biri için karara özel, tek cümlelik sivri bir soru ve insanın düşeceği bir tuzak üret.
 SADECE aşağıdaki JSON formatında döndür:
 [
   {
     "id": 1,
-    "question": "Sivri ve somut soru",
-    "trap": "Tipik kendini kandırma tuzağı"
+    "question": "Bu karara özel sivri soru",
+    "trap": "Kendini kandırma tuzağı"
   }
 ]
 """;
 
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          "contents": [
-            {
-              "parts": [{"text": prompt}]
-            }
-          ],
-          "generationConfig": {
-            "temperature": 0.7,
-            "maxOutputTokens": 1000, // Hız için token sınırlandı
-          }
-        }),
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        String text = data['candidates'][0]['content']['parts'][0]['text'];
-        text = text.replaceAll('```json', '').replaceAll('```', '').trim();
-        List<dynamic> jsonList = jsonDecode(text);
-
-        Map<int, Map<String, String>> result = {};
-        for (var item in jsonList) {
-          result[item['id']] = {
-            'question': item['question'].toString(),
-            'trap': item['trap'].toString(),
-          };
-        }
-        return result;
-      }
-    } catch (_) {}
-    return {};
-  }
-
-  static Future<String> generatePrescription({
-    required String decisionTitle,
-    required DecisionCategory category,
-    required List<RuleModel> failedRules,
-    required List<RuleModel> weakRules,
-    String? apiKey,
-  }) async {
-    if (apiKey != null && apiKey.trim().isNotEmpty) {
+    for (String model in _models) {
       try {
         final url = Uri.parse(
-          'https://generativelanguage.googleapis.com/v1beta/models/$_model:generateContent?key=$apiKey',
+          'https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$apiKey',
         );
-
-        final prompt = """
-Sen HAE Bilişsel Savunma Danışmanısın.
-Kullanıcı '${category.label}' kategorisinde "$decisionTitle" kararını test etti.
-- KÖR NOKTALAR: ${failedRules.map((r) => r.title).join(", ")}
-- YARIM PLANLAR: ${weakRules.map((r) => r.title).join(", ")}
-
-Lütfen lafı uzatmadan, doğrudan yüze vuran, uygulanabilir ve sert 3 maddelik bir acil eylem reçetesi yaz. Her cümlenin içine zorla tarih sıkıştırma. Markdown formatında olsun.
-""";
 
         final response = await http.post(
           url,
@@ -103,19 +51,83 @@ Lütfen lafı uzatmadan, doğrudan yüze vuran, uygulanabilir ve sert 3 maddelik
               }
             ],
             "generationConfig": {
-              "temperature": 0.8,
-              "maxOutputTokens": 800, // Işık hızında dönsün
+              "temperature": 0.7,
+              "maxOutputTokens": 1200,
             }
           }),
         );
 
         if (response.statusCode == 200) {
           final data = jsonDecode(response.body);
-          return data['candidates'][0]['content']['parts'][0]['text'];
+          String text = data['candidates'][0]['content']['parts'][0]['text'];
+          text = text.replaceAll('```json', '').replaceAll('```', '').trim();
+          List<dynamic> jsonList = jsonDecode(text);
+
+          Map<int, Map<String, String>> result = {};
+          for (var item in jsonList) {
+            result[item['id']] = {
+              'question': item['question'].toString(),
+              'trap': item['trap'].toString(),
+            };
+          }
+          return result;
         }
-      } catch (_) {}
+      } catch (_) {
+        continue; // Bir modelde hata olursa listedeki diğer modele geçer
+      }
+    }
+    return {};
+  }
+
+  static Future<String> generatePrescription({
+    required String decisionTitle,
+    required List<RuleModel> failedRules,
+    required List<RuleModel> weakRules,
+    String? apiKey,
+  }) async {
+    if (apiKey != null && apiKey.trim().isNotEmpty) {
+      final prompt = """
+Sen Human Analytics Engine Bilişsel Savunma Danışmanısın.
+Kullanıcı şu kararı test etti: "$decisionTitle".
+Kararın türünü (yazılım, mimari, kariyer, yatırım) kendin anla ve O ALANIN diliyle konuş.
+- KÖR NOKTALAR (Hiç düşünülmemiş): ${failedRules.map((r) => r.title).join(", ")}
+- YARIM PLANLAR (Sezgisel): ${weakRules.map((r) => r.title).join(", ")}
+
+Lütfen kullanıcıya acı gerçekleri yüzüne vuran, 3 maddelik çok sert ve bu karara özel bir eylem reçetesi yaz. Finans dışı konularda 'stop-loss' gibi alakasız borsa jargonu kullanma, konunun kendi diliyle konuş. Markdown formatında olsun.
+""";
+
+      for (String model in _models) {
+        try {
+          final url = Uri.parse(
+            'https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$apiKey',
+          );
+
+          final response = await http.post(
+            url,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              "contents": [
+                {
+                  "parts": [{"text": prompt}]
+                }
+              ],
+              "generationConfig": {
+                "temperature": 0.8,
+                "maxOutputTokens": 800,
+              }
+            }),
+          );
+
+          if (response.statusCode == 200) {
+            final data = jsonDecode(response.body);
+            return data['candidates'][0]['content']['parts'][0]['text'];
+          }
+        } catch (_) {
+          continue;
+        }
+      }
     }
 
-    return "Kritik kör noktalar tespit edildi. Lütfen en az bir tarafsız hakeme danışmadan ve zarar limitinizi (Stop-Loss) sabitlemeden harekete geçmeyin.";
+    return "### ⚠️ Bilişsel Kırılganlık Uyarısı\n\nBu kararda kritik kör noktalar tespit edildi. Lütfen en az bir tarafsız uzmana danışmadan ve başarısızlık halinde ne yapacağınızı netleştirmeden yola çıkmayın.";
   }
 }
