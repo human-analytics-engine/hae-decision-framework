@@ -5,6 +5,9 @@ import '../models/category_model.dart';
 import '../models/rule_model.dart';
 
 class AiAdvisorService {
+  // Ultra hızlı Lite uç noktası
+  static const String _model = 'gemini-2.5-flash-lite';
+
   static Future<Map<int, Map<String, String>>> generateCustomQuestions({
     required String decisionTitle,
     required DecisionCategory category,
@@ -12,28 +15,23 @@ class AiAdvisorService {
   }) async {
     if (apiKey == null || apiKey.trim().isEmpty) return {};
 
-    final now = DateTime.now();
-    final todayStr = "${now.day}.${now.month}.${now.year}";
-
     try {
       final url = Uri.parse(
-        'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$apiKey',
+        'https://generativelanguage.googleapis.com/v1beta/models/$_model:generateContent?key=$apiKey',
       );
 
       final prompt = """
-Sen Human Analytics Engine (HAE) ekosisteminin acımasız Sokratik Karar Sorgulayıcısısın.
-Bugünün tarihi: $todayStr. Soracağın hedef ve vadeleri BUGÜNDEN SONRAKİ ileri tarihler olarak ver (asla geçmiş tarih verme).
-
+Sen Human Analytics Engine Sokratik Karar Sorgulayıcısısın.
 Kullanıcı '${category.label}' kategorisinde şu kararı test ediyor: "$decisionTitle".
+Gereksiz yere her soruya spesifik tarih sıkıştırma; odak noktan mantık hataları, finansal kör noktalar, aşırı özgüven ve riskler olsun.
 
-Bu kararı alan bir insanın kendini kandırmasını engellemek için, 10 kuralın her birine özel, son derece somut, rakam veya hedef tarih içeren sivri birer soru ve tuzak uyarısı üret.
-
-Yanıtını SADECE aşağıdaki JSON array formatında döndür:
+10 kuralın her biri için karara özel, tek cümlelik sivri bir soru ve insanın düşeceği bir tuzak üret.
+SADECE aşağıdaki JSON formatında döndür:
 [
   {
     "id": 1,
-    "question": "Somut ve sivri soru",
-    "trap": "İnsanın düşeceği tipik kendini kandırma tuzağı"
+    "question": "Sivri ve somut soru",
+    "trap": "Tipik kendini kandırma tuzağı"
   }
 ]
 """;
@@ -46,7 +44,11 @@ Yanıtını SADECE aşağıdaki JSON array formatında döndür:
             {
               "parts": [{"text": prompt}]
             }
-          ]
+          ],
+          "generationConfig": {
+            "temperature": 0.7,
+            "maxOutputTokens": 1000, // Hız için token sınırlandı
+          }
         }),
       );
 
@@ -76,23 +78,19 @@ Yanıtını SADECE aşağıdaki JSON array formatında döndür:
     required List<RuleModel> weakRules,
     String? apiKey,
   }) async {
-    final now = DateTime.now();
-    final todayStr = "${now.day}.${now.month}.${now.year}";
-
     if (apiKey != null && apiKey.trim().isNotEmpty) {
       try {
         final url = Uri.parse(
-          'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$apiKey',
+          'https://generativelanguage.googleapis.com/v1beta/models/$_model:generateContent?key=$apiKey',
         );
 
         final prompt = """
-Sen Human Analytics Engine Bilişsel Savunma Danışmanısın.
-Bugünün tarihi: $todayStr.
+Sen HAE Bilişsel Savunma Danışmanısın.
 Kullanıcı '${category.label}' kategorisinde "$decisionTitle" kararını test etti.
 - KÖR NOKTALAR: ${failedRules.map((r) => r.title).join(", ")}
 - YARIM PLANLAR: ${weakRules.map((r) => r.title).join(", ")}
 
-Lütfen kullanıcıya acı gerçekleri yüzüne vuran, 3 maddelik çok sert ve uygulanabilir bir acil eylem planı (reçete) yaz. Markdown formatında olsun.
+Lütfen lafı uzatmadan, doğrudan yüze vuran, uygulanabilir ve sert 3 maddelik bir acil eylem reçetesi yaz. Her cümlenin içine zorla tarih sıkıştırma. Markdown formatında olsun.
 """;
 
         final response = await http.post(
@@ -103,7 +101,11 @@ Lütfen kullanıcıya acı gerçekleri yüzüne vuran, 3 maddelik çok sert ve u
               {
                 "parts": [{"text": prompt}]
               }
-            ]
+            ],
+            "generationConfig": {
+              "temperature": 0.8,
+              "maxOutputTokens": 800, // Işık hızında dönsün
+            }
           }),
         );
 
@@ -114,13 +116,6 @@ Lütfen kullanıcıya acı gerçekleri yüzüne vuran, 3 maddelik çok sert ve u
       } catch (_) {}
     }
 
-    StringBuffer sb = StringBuffer();
-    sb.writeln("### 🤖 Bilişsel Kurtarma Reçetesi ($decisionTitle)");
-    sb.writeln("*Tespit edilen ${failedRules.length} kritik kör nokta için acil adımlar:*\n");
-    for (var r in failedRules) {
-      sb.writeln("**📌 ${r.title}:**");
-      sb.writeln("→ ${r.description} kuralını bu karara derhal dahil et; aksi halde kendini kandırıyorsun.\n");
-    }
-    return sb.toString();
+    return "Kritik kör noktalar tespit edildi. Lütfen en az bir tarafsız hakeme danışmadan ve zarar limitinizi (Stop-Loss) sabitlemeden harekete geçmeyin.";
   }
 }

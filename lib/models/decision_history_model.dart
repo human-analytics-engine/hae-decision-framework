@@ -8,6 +8,7 @@ class DecisionHistory {
   final DateTime date;
   final List<int> failedRuleIds;
   final DecisionCategory category;
+  final String? prescription; // Kalıcı reçete alanı
 
   DecisionHistory({
     required this.title,
@@ -15,6 +16,7 @@ class DecisionHistory {
     required this.date,
     required this.failedRuleIds,
     this.category = DecisionCategory.personal,
+    this.prescription,
   });
 
   Map<String, dynamic> toMap() {
@@ -24,6 +26,7 @@ class DecisionHistory {
       'date': date.toIso8601String(),
       'failedRuleIds': failedRuleIds,
       'category': category.name,
+      'prescription': prescription,
     };
   }
 
@@ -41,6 +44,7 @@ class DecisionHistory {
       date: DateTime.parse(map['date']),
       failedRuleIds: List<int>.from(map['failedRuleIds'] ?? []),
       category: cat,
+      prescription: map['prescription'],
     );
   }
 

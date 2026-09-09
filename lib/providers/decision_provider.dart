@@ -110,6 +110,7 @@ class DecisionProvider extends ChangeNotifier {
     return freq;
   }
 
+// lib/providers/decision_provider.dart içindeki saveCurrentDecision fonksiyonu:
   Future<void> saveCurrentDecision() async {
     final prefs = await SharedPreferences.getInstance();
     final newRecord = DecisionHistory(
@@ -118,6 +119,7 @@ class DecisionProvider extends ChangeNotifier {
       date: DateTime.now(),
       failedRuleIds: blindSpotRules.map((r) => r.id).toList(),
       category: selectedCategory,
+      prescription: currentPrescription, // Reçeteyi de kaydettik!
     );
 
     history.insert(0, newRecord);
