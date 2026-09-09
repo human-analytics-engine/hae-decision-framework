@@ -15,11 +15,11 @@ class AiAdvisorService {
       return "Tebrikler! Kararınız tüm bilişsel savunma testlerini geçti. Herhangi bir kritik kırılganlık tespit edilmedi.";
     }
 
-    // Eğer kullanıcı Gemini API anahtarı girdiyse gerçek LLM'e gitsin
+    // Kullanıcının panelindeki güncel Gemini 2.5 Flash modeli
     if (apiKey != null && apiKey.trim().isNotEmpty) {
       try {
         final url = Uri.parse(
-          'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$apiKey',
+          'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$apiKey',
         );
 
         final prompt = """
@@ -52,7 +52,7 @@ Lütfen kullanıcıya bu kararı batırmaması ve kendini kandırmaması için k
       }
     }
 
-    // API anahtarı yoksa akıllı yerel bilişsel motor devreye girer
+    // API anahtarı yoksa veya hata verirse akıllı yerel bilişsel motor devreye girer
     StringBuffer sb = StringBuffer();
     sb.writeln("### 🤖 Bilişsel Kurtarma Reçetesi ($decisionTitle)");
     sb.writeln("*Tespit edilen ${failedRules.length} kritik zaafiyet için acil adımlar:*\n");
