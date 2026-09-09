@@ -36,6 +36,7 @@ class _ResultScreenState extends State<ResultScreen> {
     );
 
     if (!mounted) return;
+    provider.setPrescription(prescription); // Raporla birleştirmek için sakla
     setState(() => _isLoadingAi = false);
 
     showModalBottomSheet(
@@ -58,11 +59,26 @@ class _ResultScreenState extends State<ResultScreen> {
                 ),
               ),
               const SizedBox(height: 20),
-              const Row(
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Icon(Icons.auto_awesome, color: Color(0xFF38BDF8)),
-                  SizedBox(width: 8),
-                  Text("AI Bilişsel Kurtarma Reçetesi", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const Row(
+                    children: [
+                      Icon(Icons.auto_awesome, color: Color(0xFF38BDF8)),
+                      SizedBox(width: 8),
+                      Text("AI Bilişsel Reçete", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.copy, size: 18, color: Color(0xFF38BDF8)),
+                    tooltip: "Reçeteyi Kopyala",
+                    onPressed: () {
+                      Clipboard.setData(ClipboardData(text: prescription));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("Yalnızca AI reçetesi panoya kopyalandı!")),
+                      );
+                    },
+                  ),
                 ],
               ),
               const Divider(height: 24),
@@ -125,7 +141,10 @@ class _ResultScreenState extends State<ResultScreen> {
                   icon: _isLoadingAi
                       ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
                       : const Icon(Icons.auto_awesome, color: Color(0xFF38BDF8), size: 16),
-                  label: const Text("AI Reçetesi", style: TextStyle(color: Color(0xFF38BDF8))),
+                  label: Text(
+                    provider.currentPrescription != null ? "Reçeteyi Gör" : "AI Reçetesi Al",
+                    style: const TextStyle(color: Color(0xFF38BDF8)),
+                  ),
                 ),
               ],
             ),
@@ -149,7 +168,7 @@ class _ResultScreenState extends State<ResultScreen> {
                     const Center(
                       child: Padding(
                         padding: EdgeInsets.all(32.0),
-                        child: Text("Tebrikler! Kararınız tüm 10 testi somut kanıtlarla geçti.", style: TextStyle(color: Colors.grey)),
+                        child: Text("Tebrikler! Kararınız tüm testleri geçti.", style: TextStyle(color: Colors.grey)),
                       ),
                     ),
                   ],
@@ -163,7 +182,7 @@ class _ResultScreenState extends State<ResultScreen> {
                 Expanded(
                   child: OutlinedButton.icon(
                     icon: const Icon(Icons.copy, size: 16),
-                    label: const Text("Markdown Kopyala"),
+                    label: const Text("Tüm Raporu Kopyala"),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       side: const BorderSide(color: Color(0xFF38BDF8)),
@@ -173,7 +192,7 @@ class _ResultScreenState extends State<ResultScreen> {
                       final md = provider.generateMarkdownReport();
                       Clipboard.setData(ClipboardData(text: md));
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text("Rapor panoya kopyalandı!")),
+                        const SnackBar(content: Text("10 Kural ve Varsa AI Reçetesi panoya kopyalandı!")),
                       );
                     },
                   ),

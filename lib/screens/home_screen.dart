@@ -2,17 +2,23 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'dart:js' as js; // Web speech için
 import '../providers/decision_provider.dart';
 import '../models/category_model.dart';
-import '../core/rules_data.dart';
 import 'wizard_screen.dart';
 import 'decision_detail_sheet.dart';
 import 'analytics_screen.dart';
 
-class HomeScreen extends StatelessWidget {
-  final TextEditingController _controller = TextEditingController();
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
 
-  HomeScreen({super.key});
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final TextEditingController _controller = TextEditingController();
+  bool _isListening = false;
 
   final List<String> _quickTemplates = [
     "İşten ayrılıp kendi ajansımı kurmak",
@@ -21,6 +27,25 @@ class HomeScreen extends StatelessWidget {
     "Şehir değiştirip uzaktan çalışmaya başlamak",
   ];
 
+  void _startVoiceInput() {
+    setState(() => _isListening = true);
+    try {
+      js.context.callMethod('startSpeechRecognition', [
+        (String text) {
+          setState(() {
+            _controller.text = text;
+            _isListening = false;
+          });
+        }
+      ]);
+    } catch (_) {
+      setState(() => _isListening = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Ses tanıma bu tarayıcıda başlatılamadı.")),
+      );
+    }
+  }
+
   void _startDecision(BuildContext context) async {
     if (_controller.text.trim().isEmpty) return;
     
@@ -28,7 +53,6 @@ class HomeScreen extends StatelessWidget {
     final title = _controller.text.trim();
     _controller.clear();
 
-    // AI soruları hazırlarken loading dialogu göster
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -42,15 +66,9 @@ class HomeScreen extends StatelessWidget {
               children: [
                 CircularProgressIndicator(color: Color(0xFF38BDF8)),
                 SizedBox(height: 16),
-                Text(
-                  "Sokratik Sorgu Seti Hazırlanıyor...",
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                ),
+                Text("Sokratik Sorgu Seti Hazırlanıyor...", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                 SizedBox(height: 8),
-                Text(
-                  "10 evrensel savunma bu karara özel olarak uyarlanıyor.",
-                  style: TextStyle(color: Colors.grey, fontSize: 12),
-                ),
+                Text("10 evrensel savunma bu karara özel olarak uyarlanıyor.", style: TextStyle(color: Colors.grey, fontSize: 12)),
               ],
             ),
           ),
@@ -61,11 +79,8 @@ class HomeScreen extends StatelessWidget {
     await provider.startNewDecision(title);
 
     if (context.mounted) {
-      Navigator.pop(context); // Dialogu kapat
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const WizardScreen()),
-      );
+      Navigator.pop(context);
+      Navigator.push(context, MaterialPageRoute(builder: (_) => const WizardScreen()));
     }
   }
 
@@ -141,12 +156,19 @@ class HomeScreen extends StatelessWidget {
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   filled: true,
                   fillColor: Theme.of(context).colorScheme.surface,
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _isListening ? Icons.mic : Icons.mic_none,
+                      color: _isListening ? Colors.redAccent : const Color(0xFF38BDF8),
+                    ),
+                    tooltip: "Sesle Dikte Et (Türkçe)",
+                    onPressed: _startVoiceInput,
+                  ),
                 ),
                 onSubmitted: (_) => _startDecision(context),
               ),
               const SizedBox(height: 8),
 
-              // Hızlı İlham Çipleri (Templates)
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
@@ -166,7 +188,6 @@ class HomeScreen extends StatelessWidget {
               ),
               const SizedBox(height: 12),
 
-              // Kategori Seçiciler
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
@@ -217,10 +238,7 @@ class HomeScreen extends StatelessWidget {
               Expanded(
                 child: provider.history.isEmpty
                     ? Center(
-                        child: Text(
-                          "Henüz bir karar test etmedin.",
-                          style: TextStyle(color: Colors.grey[600]),
-                        ),
+                        child: Text("Henüz bir karar test etmedin.", style: TextStyle(color: Colors.grey[600])),
                       )
                     : ListView.builder(
                         itemCount: provider.history.length,

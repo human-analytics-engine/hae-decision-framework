@@ -5,13 +5,15 @@ import '../models/category_model.dart';
 import '../models/rule_model.dart';
 
 class AiAdvisorService {
-  // Karara özel 10 dinamik soruyu tek istekte üretir
   static Future<Map<int, Map<String, String>>> generateCustomQuestions({
     required String decisionTitle,
     required DecisionCategory category,
     String? apiKey,
   }) async {
     if (apiKey == null || apiKey.trim().isEmpty) return {};
+
+    final now = DateTime.now();
+    final todayStr = "${now.day}.${now.month}.${now.year}";
 
     try {
       final url = Uri.parse(
@@ -20,18 +22,19 @@ class AiAdvisorService {
 
       final prompt = """
 Sen Human Analytics Engine (HAE) ekosisteminin acımasız Sokratik Karar Sorgulayıcısısın.
+Bugünün tarihi: $todayStr. Soracağın hedef ve vadeleri BUGÜNDEN SONRAKİ ileri tarihler olarak ver (asla geçmiş tarih verme).
+
 Kullanıcı '${category.label}' kategorisinde şu kararı test ediyor: "$decisionTitle".
 
-Bu kararı alan bir insanın kendini kandırmasını engellemek için, 10 kuralın her birine özel, son derece somut, sivri ve karara özel birer soru ve tuzak uyarısı üret.
+Bu kararı alan bir insanın kendini kandırmasını engellemek için, 10 kuralın her birine özel, son derece somut, rakam veya hedef tarih içeren sivri birer soru ve tuzak uyarısı üret.
 
-Yanıtını SADECE ve SADECE aşağıdaki JSON array formatında döndür, markdown veya başka açıklama ekleme:
+Yanıtını SADECE aşağıdaki JSON array formatında döndür:
 [
   {
     "id": 1,
-    "question": "Bu karara özel, somut rakam veya tarih içeren sivri bir soru",
-    "trap": "İnsanın düşeceği tipik avuntu veya kendini kandırma tuzağı"
-  },
-  ... (10'a kadar)
+    "question": "Somut ve sivri soru",
+    "trap": "İnsanın düşeceği tipik kendini kandırma tuzağı"
+  }
 ]
 """;
 
@@ -50,8 +53,6 @@ Yanıtını SADECE ve SADECE aşağıdaki JSON array formatında döndür, markd
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         String text = data['candidates'][0]['content']['parts'][0]['text'];
-        
-        // Markdown json taglarını temizle
         text = text.replaceAll('```json', '').replaceAll('```', '').trim();
         List<dynamic> jsonList = jsonDecode(text);
 
@@ -64,13 +65,10 @@ Yanıtını SADECE ve SADECE aşağıdaki JSON array formatında döndür, markd
         }
         return result;
       }
-    } catch (_) {
-      // Hata olursa boş döner, varsayılan insanileştirilmiş sorular çalışır
-    }
+    } catch (_) {}
     return {};
   }
 
-  // Sonuç için sert reçete üretir
   static Future<String> generatePrescription({
     required String decisionTitle,
     required DecisionCategory category,
@@ -78,6 +76,9 @@ Yanıtını SADECE ve SADECE aşağıdaki JSON array formatında döndür, markd
     required List<RuleModel> weakRules,
     String? apiKey,
   }) async {
+    final now = DateTime.now();
+    final todayStr = "${now.day}.${now.month}.${now.year}";
+
     if (apiKey != null && apiKey.trim().isNotEmpty) {
       try {
         final url = Uri.parse(
@@ -86,9 +87,10 @@ Yanıtını SADECE ve SADECE aşağıdaki JSON array formatında döndür, markd
 
         final prompt = """
 Sen Human Analytics Engine Bilişsel Savunma Danışmanısın.
+Bugünün tarihi: $todayStr.
 Kullanıcı '${category.label}' kategorisinde "$decisionTitle" kararını test etti.
-- KÖR NOKTALAR (Hiç düşünülmemiş): ${failedRules.map((r) => r.title).join(", ")}
-- YARIM PLANLAR (Sezgisel, yazılmamış): ${weakRules.map((r) => r.title).join(", ")}
+- KÖR NOKTALAR: ${failedRules.map((r) => r.title).join(", ")}
+- YARIM PLANLAR: ${weakRules.map((r) => r.title).join(", ")}
 
 Lütfen kullanıcıya acı gerçekleri yüzüne vuran, 3 maddelik çok sert ve uygulanabilir bir acil eylem planı (reçete) yaz. Markdown formatında olsun.
 """;
@@ -112,11 +114,9 @@ Lütfen kullanıcıya acı gerçekleri yüzüne vuran, 3 maddelik çok sert ve u
       } catch (_) {}
     }
 
-    // Yerel akıllı reçete
     StringBuffer sb = StringBuffer();
     sb.writeln("### 🤖 Bilişsel Kurtarma Reçetesi ($decisionTitle)");
     sb.writeln("*Tespit edilen ${failedRules.length} kritik kör nokta için acil adımlar:*\n");
-
     for (var r in failedRules) {
       sb.writeln("**📌 ${r.title}:**");
       sb.writeln("→ ${r.description} kuralını bu karara derhal dahil et; aksi halde kendini kandırıyorsun.\n");

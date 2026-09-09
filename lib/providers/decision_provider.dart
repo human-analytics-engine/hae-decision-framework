@@ -13,6 +13,7 @@ class DecisionProvider extends ChangeNotifier {
   List<RuleModel> rules = [];
   List<DecisionHistory> history = [];
   String? geminiApiKey;
+  String? currentPrescription; // AI Reçetesini hafızada tutar
   bool isGeneratingQuestions = false;
 
   DecisionProvider() {
@@ -31,13 +32,17 @@ class DecisionProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Yeni karar testi başlat (Dinamik AI Sorularıyla Birlikte)
+  void setPrescription(String p) {
+    currentPrescription = p;
+    notifyListeners();
+  }
+
   Future<void> startNewDecision(String title) async {
     decisionTitle = title;
+    currentPrescription = null; // Sıfırla
     isGeneratingQuestions = true;
     notifyListeners();
 
-    // Kuralları sıfırla
     rules = RulesData.universalRules.map((r) => RuleModel(
       id: r.id,
       stage: r.stage,
@@ -47,7 +52,6 @@ class DecisionProvider extends ChangeNotifier {
       defaultQuestion: r.defaultQuestion,
     )).toList();
 
-    // AI ile bu karara özel soruları üret
     if (geminiApiKey != null && geminiApiKey!.isNotEmpty) {
       final customMap = await AiAdvisorService.generateCustomQuestions(
         decisionTitle: title,
@@ -69,7 +73,6 @@ class DecisionProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // 3 Seviyeli dürüstlük cevabı
   void answerRule(int ruleId, HonestyLevel level, {String? note}) {
     final index = rules.indexWhere((r) => r.id == ruleId);
     if (index != -1) {
@@ -79,34 +82,18 @@ class DecisionProvider extends ChangeNotifier {
     }
   }
 
-  // Toplam Sağlamlık Skoru (Maksimum 20 puandan %100'e)
   int get calculateScore {
     int totalPoints = rules.fold(0, (sum, r) => sum + (r.selectedLevel?.points ?? 0));
     int maxPoints = rules.length * 2;
     return ((totalPoints / maxPoints) * 100).round();
   }
 
-  // Kör Noktalar (0 puan)
-  List<RuleModel> get blindSpotRules {
-    return rules.where((r) => r.selectedLevel == HonestyLevel.blindSpot).toList();
-  }
-
-  // Sezgisel / Yarım Planlar (1 puan)
-  List<RuleModel> get intuitiveRules {
-    return rules.where((r) => r.selectedLevel == HonestyLevel.intuitive).toList();
-  }
-
-  // Somut Kanıtlar (2 puan)
-  List<RuleModel> get concreteRules {
-    return rules.where((r) => r.selectedLevel == HonestyLevel.concrete).toList();
-  }
-
-  // Geriye dönük uyumluluk için
+  List<RuleModel> get blindSpotRules => rules.where((r) => r.selectedLevel == HonestyLevel.blindSpot).toList();
+  List<RuleModel> get intuitiveRules => rules.where((r) => r.selectedLevel == HonestyLevel.intuitive).toList();
+  List<RuleModel> get concreteRules => rules.where((r) => r.selectedLevel == HonestyLevel.concrete).toList();
   List<RuleModel> get failedRules => blindSpotRules;
 
-  // --- ANALİTİK ---
   int get totalDecisions => history.length;
-
   int get averageScore {
     if (history.isEmpty) return 0;
     int total = history.fold(0, (sum, item) => sum + item.score);
@@ -123,7 +110,6 @@ class DecisionProvider extends ChangeNotifier {
     return freq;
   }
 
-  // --- STORAGE ---
   Future<void> saveCurrentDecision() async {
     final prefs = await SharedPreferences.getInstance();
     final newRecord = DecisionHistory(
@@ -157,6 +143,7 @@ class DecisionProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Hem kuralları hem AI Reçetesini tek bir Markdown raporunda birleştirir
   String generateMarkdownReport({String? title, int? score, List<int>? failedIds, DecisionCategory? category}) {
     final reportTitle = title ?? decisionTitle;
     final reportScore = score ?? calculateScore;
@@ -178,6 +165,13 @@ class DecisionProvider extends ChangeNotifier {
       sb.writeln("$icon **${rule.title}** (${rule.concept})");
       sb.writeln("   *Soru:* ${rule.activeQuestion}");
       sb.writeln("   *Durum:* ${rule.selectedLevel?.label ?? 'Cevaplanmadı'}");
+      sb.writeln();
+    }
+
+    if (currentPrescription != null && currentPrescription!.isNotEmpty) {
+      sb.writeln("---\n");
+      sb.writeln("## 🤖 AI Bilişsel Kurtarma Reçetesi");
+      sb.writeln(currentPrescription);
       sb.writeln();
     }
 
