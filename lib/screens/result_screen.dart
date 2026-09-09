@@ -1,0 +1,80 @@
+// lib/screens/result_screen.dart
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/decision_provider.dart';
+
+class ResultScreen extends StatelessWidget {
+  const ResultScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = context.watch<DecisionProvider>();
+    final score = provider.calculateScore;
+    final failed = provider.failedRules;
+
+    Color scoreColor = score >= 80 ? const Color(0xFF10B981) : (score >= 50 ? Colors.orange : Colors.redAccent);
+
+    return Scaffold(
+      appBar: AppBar(title: const Text("Karar Raporu"), automaticallyImplyLeading: false),
+      body: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Column(
+                children: [
+                  Text("Sağlamlık Skoru", style: TextStyle(color: Colors.grey[400], fontSize: 18)),
+                  const SizedBox(height: 8),
+                  Text(
+                    "%$score",
+                    style: TextStyle(fontSize: 64, fontWeight: FontWeight.bold, color: scoreColor),
+                  ),
+                  Text(
+                    score >= 80 ? "Sistematik ve güvenli." : "Bilişsel zaaflar tespit edildi!",
+                    style: TextStyle(color: scoreColor, fontSize: 16),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 32),
+            if (failed.isNotEmpty) ...[
+              const Text("⚠️ Zayıf Noktalar (Kırılganlıklar)", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: failed.length,
+                  itemBuilder: (context, index) {
+                    final rule = failed[index];
+                    return Card(
+                      color: Theme.of(context).colorScheme.surface,
+                      margin: const EdgeInsets.only(bottom: 8),
+                      child: ListTile(
+                        leading: const Icon(Icons.warning_amber_rounded, color: Colors.orange),
+                        title: Text(rule.title, style: const TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: Text(rule.description),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ] else ...[
+              const Expanded(
+                child: Center(
+                  child: Text("Tebrikler! Kararınız tüm testleri geçti.", style: TextStyle(fontSize: 18, color: Colors.grey)),
+                ),
+              ),
+            ],
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Ana Sayfaya Dön", style: TextStyle(fontSize: 18)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
