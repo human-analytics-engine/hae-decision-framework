@@ -5,17 +5,79 @@ import '../models/category_model.dart';
 import '../models/rule_model.dart';
 
 class AiAdvisorService {
+  // Karara özel 10 dinamik soruyu tek istekte üretir
+  static Future<Map<int, Map<String, String>>> generateCustomQuestions({
+    required String decisionTitle,
+    required DecisionCategory category,
+    String? apiKey,
+  }) async {
+    if (apiKey == null || apiKey.trim().isEmpty) return {};
+
+    try {
+      final url = Uri.parse(
+        'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$apiKey',
+      );
+
+      final prompt = """
+Sen Human Analytics Engine (HAE) ekosisteminin acımasız Sokratik Karar Sorgulayıcısısın.
+Kullanıcı '${category.label}' kategorisinde şu kararı test ediyor: "$decisionTitle".
+
+Bu kararı alan bir insanın kendini kandırmasını engellemek için, 10 kuralın her birine özel, son derece somut, sivri ve karara özel birer soru ve tuzak uyarısı üret.
+
+Yanıtını SADECE ve SADECE aşağıdaki JSON array formatında döndür, markdown veya başka açıklama ekleme:
+[
+  {
+    "id": 1,
+    "question": "Bu karara özel, somut rakam veya tarih içeren sivri bir soru",
+    "trap": "İnsanın düşeceği tipik avuntu veya kendini kandırma tuzağı"
+  },
+  ... (10'a kadar)
+]
+""";
+
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          "contents": [
+            {
+              "parts": [{"text": prompt}]
+            }
+          ]
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        String text = data['candidates'][0]['content']['parts'][0]['text'];
+        
+        // Markdown json taglarını temizle
+        text = text.replaceAll('```json', '').replaceAll('```', '').trim();
+        List<dynamic> jsonList = jsonDecode(text);
+
+        Map<int, Map<String, String>> result = {};
+        for (var item in jsonList) {
+          result[item['id']] = {
+            'question': item['question'].toString(),
+            'trap': item['trap'].toString(),
+          };
+        }
+        return result;
+      }
+    } catch (_) {
+      // Hata olursa boş döner, varsayılan insanileştirilmiş sorular çalışır
+    }
+    return {};
+  }
+
+  // Sonuç için sert reçete üretir
   static Future<String> generatePrescription({
     required String decisionTitle,
     required DecisionCategory category,
     required List<RuleModel> failedRules,
+    required List<RuleModel> weakRules,
     String? apiKey,
   }) async {
-    if (failedRules.isEmpty) {
-      return "Tebrikler! Kararınız tüm bilişsel savunma testlerini geçti. Herhangi bir kritik kırılganlık tespit edilmedi.";
-    }
-
-    // Kullanıcının panelindeki güncel Gemini 2.5 Flash modeli
     if (apiKey != null && apiKey.trim().isNotEmpty) {
       try {
         final url = Uri.parse(
@@ -23,12 +85,12 @@ class AiAdvisorService {
         );
 
         final prompt = """
-Sen Human Analytics Engine (HAE) ekosisteminin Bilişsel Savunma Danışmanısın.
-Kullanıcı '${category.label}' kategorisinde şu kararı test etti: "$decisionTitle".
-Karar şu 10 Evrensel Kural testlerinden kaldı:
-${failedRules.map((r) => "- ${r.title}: ${r.description}").join("\n")}
+Sen Human Analytics Engine Bilişsel Savunma Danışmanısın.
+Kullanıcı '${category.label}' kategorisinde "$decisionTitle" kararını test etti.
+- KÖR NOKTALAR (Hiç düşünülmemiş): ${failedRules.map((r) => r.title).join(", ")}
+- YARIM PLANLAR (Sezgisel, yazılmamış): ${weakRules.map((r) => r.title).join(", ")}
 
-Lütfen kullanıcıya bu kararı batırmaması ve kendini kandırmaması için kısa, sert, doğrudan ve uygulanabilir 3 maddelik acil eylem planı (reçete) yaz. Markdown formatında olsun.
+Lütfen kullanıcıya acı gerçekleri yüzüne vuran, 3 maddelik çok sert ve uygulanabilir bir acil eylem planı (reçete) yaz. Markdown formatında olsun.
 """;
 
         final response = await http.post(
@@ -47,30 +109,17 @@ Lütfen kullanıcıya bu kararı batırmaması ve kendini kandırmaması için k
           final data = jsonDecode(response.body);
           return data['candidates'][0]['content']['parts'][0]['text'];
         }
-      } catch (_) {
-        // Hata durumunda yerel motora geri düşer
-      }
+      } catch (_) {}
     }
 
-    // API anahtarı yoksa veya hata verirse akıllı yerel bilişsel motor devreye girer
+    // Yerel akıllı reçete
     StringBuffer sb = StringBuffer();
     sb.writeln("### 🤖 Bilişsel Kurtarma Reçetesi ($decisionTitle)");
-    sb.writeln("*Tespit edilen ${failedRules.length} kritik zaafiyet için acil adımlar:*\n");
+    sb.writeln("*Tespit edilen ${failedRules.length} kritik kör nokta için acil adımlar:*\n");
 
     for (var r in failedRules) {
-      sb.writeln("**📌 ${r.title} İhlali İçin:**");
-      if (r.id == 2) {
-        sb.writeln("→ Benzer durumdaki 5 vakanın başarısızlık nedenlerini analiz etmeden sermaye veya vakit bağlama.");
-      } else if (r.id == 3) {
-        sb.writeln("→ Projeyi en sert eleştirecek bir 'Şeytanın Avukatı' bulup fikrini çürütmesini iste.");
-      } else if (r.id == 4) {
-        sb.writeln("→ Karardan hiçbir kişisel veya finansal çıkarı olmayan tarafsız bir hakeme danış.");
-      } else if (r.id == 8) {
-        sb.writeln("→ Bütçeni veya takvimini en az %30 esnet; hata toleransı bırakmadan yola çıkma.");
-      } else {
-        sb.writeln("→ ${r.description} prensibini kararına derhal entegre et.");
-      }
-      sb.writeln();
+      sb.writeln("**📌 ${r.title}:**");
+      sb.writeln("→ ${r.description} kuralını bu karara derhal dahil et; aksi halde kendini kandırıyorsun.\n");
     }
     return sb.toString();
   }

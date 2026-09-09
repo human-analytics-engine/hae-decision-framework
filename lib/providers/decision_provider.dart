@@ -5,6 +5,7 @@ import '../models/rule_model.dart';
 import '../core/rules_data.dart';
 import '../models/decision_history_model.dart';
 import '../models/category_model.dart';
+import '../services/ai_advisor_service.dart';
 
 class DecisionProvider extends ChangeNotifier {
   String decisionTitle = "";
@@ -12,6 +13,7 @@ class DecisionProvider extends ChangeNotifier {
   List<RuleModel> rules = [];
   List<DecisionHistory> history = [];
   String? geminiApiKey;
+  bool isGeneratingQuestions = false;
 
   DecisionProvider() {
     loadSettingsAndHistory();
@@ -29,40 +31,80 @@ class DecisionProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void startNewDecision(String title) {
+  // Yeni karar testi başlat (Dinamik AI Sorularıyla Birlikte)
+  Future<void> startNewDecision(String title) async {
     decisionTitle = title;
-    rules = RulesData.universalRules.map((rule) {
-      return RuleModel(
-        id: rule.id,
-        stage: rule.stage,
-        title: rule.title,
-        description: rule.description,
-        question: rule.question,
-        isPassed: false,
+    isGeneratingQuestions = true;
+    notifyListeners();
+
+    // Kuralları sıfırla
+    rules = RulesData.universalRules.map((r) => RuleModel(
+      id: r.id,
+      stage: r.stage,
+      title: r.title,
+      concept: r.concept,
+      description: r.description,
+      defaultQuestion: r.defaultQuestion,
+    )).toList();
+
+    // AI ile bu karara özel soruları üret
+    if (geminiApiKey != null && geminiApiKey!.isNotEmpty) {
+      final customMap = await AiAdvisorService.generateCustomQuestions(
+        decisionTitle: title,
+        category: selectedCategory,
+        apiKey: geminiApiKey,
       );
-    }).toList();
+
+      if (customMap.isNotEmpty) {
+        for (var rule in rules) {
+          if (customMap.containsKey(rule.id)) {
+            rule.dynamicQuestion = customMap[rule.id]?['question'];
+            rule.dynamicTrap = customMap[rule.id]?['trap'];
+          }
+        }
+      }
+    }
+
+    isGeneratingQuestions = false;
     notifyListeners();
   }
 
-  void answerRule(int ruleId, bool passed) {
+  // 3 Seviyeli dürüstlük cevabı
+  void answerRule(int ruleId, HonestyLevel level, {String? note}) {
     final index = rules.indexWhere((r) => r.id == ruleId);
     if (index != -1) {
-      rules[index].isPassed = passed;
+      rules[index].selectedLevel = level;
+      if (note != null) rules[index].userNote = note;
       notifyListeners();
     }
   }
 
+  // Toplam Sağlamlık Skoru (Maksimum 20 puandan %100'e)
   int get calculateScore {
-    int passedCount = rules.where((r) => r.isPassed).length;
-    return (passedCount / rules.length * 100).toInt();
+    int totalPoints = rules.fold(0, (sum, r) => sum + (r.selectedLevel?.points ?? 0));
+    int maxPoints = rules.length * 2;
+    return ((totalPoints / maxPoints) * 100).round();
   }
 
-  List<RuleModel> get failedRules {
-    return rules.where((r) => !r.isPassed).toList();
+  // Kör Noktalar (0 puan)
+  List<RuleModel> get blindSpotRules {
+    return rules.where((r) => r.selectedLevel == HonestyLevel.blindSpot).toList();
   }
 
-  // --- ANALİTİK / İSTATİSTİKLER ---
+  // Sezgisel / Yarım Planlar (1 puan)
+  List<RuleModel> get intuitiveRules {
+    return rules.where((r) => r.selectedLevel == HonestyLevel.intuitive).toList();
+  }
 
+  // Somut Kanıtlar (2 puan)
+  List<RuleModel> get concreteRules {
+    return rules.where((r) => r.selectedLevel == HonestyLevel.concrete).toList();
+  }
+
+  // Geriye dönük uyumluluk için
+  List<RuleModel> get failedRules => blindSpotRules;
+
+  // --- ANALİTİK ---
   int get totalDecisions => history.length;
 
   int get averageScore {
@@ -71,7 +113,6 @@ class DecisionProvider extends ChangeNotifier {
     return (total / history.length).round();
   }
 
-  // En çok başarısız olunan kural ID'leri ve frekansları
   Map<int, int> get ruleFailureFrequency {
     Map<int, int> freq = {};
     for (var h in history) {
@@ -82,16 +123,14 @@ class DecisionProvider extends ChangeNotifier {
     return freq;
   }
 
-  // --- LOCAL STORAGE ---
-
+  // --- STORAGE ---
   Future<void> saveCurrentDecision() async {
     final prefs = await SharedPreferences.getInstance();
-    
     final newRecord = DecisionHistory(
       title: decisionTitle,
       score: calculateScore,
       date: DateTime.now(),
-      failedRuleIds: failedRules.map((r) => r.id).toList(),
+      failedRuleIds: blindSpotRules.map((r) => r.id).toList(),
       category: selectedCategory,
     );
 
@@ -105,7 +144,6 @@ class DecisionProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     geminiApiKey = prefs.getString('gemini_api_key');
     List<String>? historyJsonList = prefs.getStringList('decision_history');
-    
     if (historyJsonList != null) {
       history = historyJsonList.map((jsonStr) => DecisionHistory.fromJson(jsonStr)).toList();
       notifyListeners();
@@ -119,31 +157,31 @@ class DecisionProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // --- MARKDOWN RAPORU ---
   String generateMarkdownReport({String? title, int? score, List<int>? failedIds, DecisionCategory? category}) {
     final reportTitle = title ?? decisionTitle;
     final reportScore = score ?? calculateScore;
     final reportCategory = category ?? selectedCategory;
-    final failedList = failedIds ?? failedRules.map((r) => r.id).toList();
 
     StringBuffer sb = StringBuffer();
-    sb.writeln("# 🧠 Bilişsel Karar Teftiş Raporu (HAE)");
+    sb.writeln("# 🧠 Bilişsel Karar Teftiş Raporu (HAE v2.0)");
     sb.writeln("**Karar:** $reportTitle");
     sb.writeln("**Kategori:** ${reportCategory.label}");
     sb.writeln("**Sağlamlık Skoru:** %$reportScore");
     sb.writeln("**Tarih:** ${DateTime.now().toLocal()}\n");
     sb.writeln("---");
-    sb.writeln("### 🛡️ 10 Kural Teftiş Sonuçları:\n");
+    sb.writeln("### 🛡️ 10 Kural Dökümü:\n");
 
-    for (var rule in RulesData.universalRules) {
-      bool passed = !failedList.contains(rule.id);
-      sb.writeln("${passed ? '✅' : '❌'} **${rule.title}**: ${passed ? 'GEÇTİ' : 'BAŞARISIZ (Kırılganlık)'}");
-      if (!passed) {
-        sb.writeln("   > *Uyarı:* ${rule.description}");
-      }
+    for (var rule in rules) {
+      String icon = rule.selectedLevel == HonestyLevel.concrete 
+          ? '🟢' 
+          : (rule.selectedLevel == HonestyLevel.intuitive ? '🟡' : '🔴');
+      sb.writeln("$icon **${rule.title}** (${rule.concept})");
+      sb.writeln("   *Soru:* ${rule.activeQuestion}");
+      sb.writeln("   *Durum:* ${rule.selectedLevel?.label ?? 'Cevaplanmadı'}");
+      sb.writeln();
     }
 
-    sb.writeln("\n---\n*Human Analytics Engine (HAE) - Decision Framework tarafından üretilmiştir.*");
+    sb.writeln("\n---\n*Human Analytics Engine (HAE) - Socratic Decision Lab tarafından üretilmiştir.*");
     return sb.toString();
   }
 }

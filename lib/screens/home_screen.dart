@@ -14,44 +14,59 @@ class HomeScreen extends StatelessWidget {
 
   HomeScreen({super.key});
 
-  void _showManifesto(BuildContext context) {
+  final List<String> _quickTemplates = [
+    "İşten ayrılıp kendi ajansımı kurmak",
+    "Yazılımda Monolith'ten Microservice'e geçmek",
+    "Portföyün %40'ı ile yeni bir hisse/kriptoya girmek",
+    "Şehir değiştirip uzaktan çalışmaya başlamak",
+  ];
+
+  void _startDecision(BuildContext context) async {
+    if (_controller.text.trim().isEmpty) return;
+    
+    final provider = context.read<DecisionProvider>();
+    final title = _controller.text.trim();
+    _controller.clear();
+
+    // AI soruları hazırlarken loading dialogu göster
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        title: const Row(
-          children: [
-            Icon(Icons.shield_outlined, color: Color(0xFF38BDF8)),
-            SizedBox(width: 8),
-            Text("10 Evrensel Kural"),
-          ],
-        ),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: ListView.builder(
-            shrinkWrap: true,
-            itemCount: RulesData.universalRules.length,
-            itemBuilder: (c, i) {
-              final r = RulesData.universalRules[i];
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 12.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text("${r.id}. ${r.title}", style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF38BDF8))),
-                    const SizedBox(height: 2),
-                    Text(r.description, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                  ],
+      barrierDismissible: false,
+      builder: (ctx) => const Center(
+        child: Card(
+          color: Color(0xFF1E293B),
+          child: Padding(
+            padding: EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(color: Color(0xFF38BDF8)),
+                SizedBox(height: 16),
+                Text(
+                  "Sokratik Sorgu Seti Hazırlanıyor...",
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                 ),
-              );
-            },
+                SizedBox(height: 8),
+                Text(
+                  "10 evrensel savunma bu karara özel olarak uyarlanıyor.",
+                  style: TextStyle(color: Colors.grey, fontSize: 12),
+                ),
+              ],
+            ),
           ),
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Kapat")),
-        ],
       ),
     );
+
+    await provider.startNewDecision(title);
+
+    if (context.mounted) {
+      Navigator.pop(context); // Dialogu kapat
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const WizardScreen()),
+      );
+    }
   }
 
   void _showApiKeyDialog(BuildContext context) {
@@ -62,21 +77,18 @@ class HomeScreen extends StatelessWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: Theme.of(context).colorScheme.surface,
-        title: const Text("Gemini API Anahtarı (Opsiyonel)"),
+        title: const Text("Gemini API Anahtarı"),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             const Text(
-              "Daha derin AI analizleri almak için Google AI Studio anahtarınızı girebilirsiniz. Boş bırakırsanız yerel kural motoru çalışır.",
+              "Google AI Studio anahtarınızı girerseniz kararlarınıza özel dinamik sorular ve AI reçeteleri üretilir.",
               style: TextStyle(fontSize: 13, color: Colors.grey),
             ),
             const SizedBox(height: 16),
             TextField(
               controller: keyController,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                hintText: "AIzaSy...",
-              ),
+              decoration: const InputDecoration(border: OutlineInputBorder(), hintText: "AIzaSy..."),
             ),
           ],
         ),
@@ -100,24 +112,17 @@ class HomeScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("HAE Decision Framework", style: TextStyle(fontSize: 16, letterSpacing: 1)),
+        title: const Text("HAE Sokratik Karar Laboratuvarı", style: TextStyle(fontSize: 16, letterSpacing: 1)),
         actions: [
           IconButton(
             icon: const Icon(Icons.insights, color: Color(0xFF38BDF8)),
             tooltip: "Bilişsel Analitik",
-            onPressed: () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => const AnalyticsScreen()));
-            },
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AnalyticsScreen())),
           ),
           IconButton(
             icon: const Icon(Icons.key, color: Colors.grey),
-            tooltip: "Gemini API Ayarı",
+            tooltip: "API Ayarı",
             onPressed: () => _showApiKeyDialog(context),
-          ),
-          IconButton(
-            icon: const Icon(Icons.info_outline, color: Colors.grey),
-            tooltip: "10 Evrensel Kural",
-            onPressed: () => _showManifesto(context),
           ),
         ],
       ),
@@ -131,16 +136,37 @@ class HomeScreen extends StatelessWidget {
               TextField(
                 controller: _controller,
                 decoration: InputDecoration(
-                  labelText: "Test edilecek karar nedir?",
-                  hintText: "Örn: AWS'ten kendi sunucumuza geçmek",
+                  labelText: "Hangi kararı test etmek istiyorsun?",
+                  hintText: "Örn: Ahmet ile ortak oto galeri açmak",
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   filled: true,
                   fillColor: Theme.of(context).colorScheme.surface,
                 ),
+                onSubmitted: (_) => _startDecision(context),
+              ),
+              const SizedBox(height: 8),
+
+              // Hızlı İlham Çipleri (Templates)
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: _quickTemplates.map((template) {
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8.0),
+                      child: ActionChip(
+                        label: Text(template, style: const TextStyle(fontSize: 12)),
+                        backgroundColor: Theme.of(context).colorScheme.surface,
+                        onPressed: () {
+                          _controller.text = template;
+                        },
+                      ),
+                    );
+                  }).toList(),
+                ),
               ),
               const SizedBox(height: 12),
-              
-              // Kategori Çipleri
+
+              // Kategori Seçiciler
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
@@ -164,27 +190,17 @@ class HomeScreen extends StatelessWidget {
                   }).toList(),
                 ),
               ),
-              
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
+
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () {
-                    if (_controller.text.isNotEmpty) {
-                      provider.startNewDecision(_controller.text);
-                      _controller.clear();
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const WizardScreen()),
-                      );
-                    }
-                  },
-                  child: const Text("Filtreden Geçir", style: TextStyle(fontSize: 16)),
+                  onPressed: () => _startDecision(context),
+                  child: const Text("Sokratik Filtreden Geçir", style: TextStyle(fontSize: 16)),
                 ),
               ),
-              
               const SizedBox(height: 24),
-              
+
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -197,7 +213,7 @@ class HomeScreen extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 8),
-              
+
               Expanded(
                 child: provider.history.isEmpty
                     ? Center(
@@ -213,7 +229,7 @@ class HomeScreen extends StatelessWidget {
                           Color scoreColor = record.score >= 80 
                               ? const Color(0xFF10B981) 
                               : (record.score >= 50 ? Colors.orange : Colors.redAccent);
-                          
+
                           return Card(
                             color: Theme.of(context).colorScheme.surface,
                             margin: const EdgeInsets.only(bottom: 12),
