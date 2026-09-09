@@ -3,9 +3,10 @@
 enum Stage { clearMind, testReality, survival }
 
 enum HonestyLevel {
-  blindSpot(0, 'Kör Noktam', 'Bunu hiç düşünmedim veya görmezden geldim.'),
+  blindSpot(0, 'Kör Noktam (Haklısın)', 'Bunu hiç düşünmedim veya görmezden geldim.'),
   intuitive(1, 'Sezgim Var', 'Kafamda kabataslak var ama yazılı/ölçülmüş değil.'),
-  concrete(2, 'Somut Kanıtım Var', 'Yazılı, test edilmiş veya ölçülmüş planım var.');
+  concrete(2, 'Somut Kanıtım Var', 'Yazılı, test edilmiş veya ölçülmüş planım var.'),
+  exempt(-1, 'Muaf / Kapsam Dışı', 'Bu kararın doğası gereği bu kural geçersizdir.');
 
   final int points;
   final String label;
@@ -17,11 +18,10 @@ class RuleModel {
   final int id;
   final Stage stage;
   final String title;
-  final String concept; // Akademik/orijinal adı
+  final String concept;
   final String description;
   final String defaultQuestion;
   
-  // AI tarafından bu karara özel dinamik üretilen alanlar:
   String? dynamicQuestion;
   String? dynamicTrap;
   

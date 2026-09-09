@@ -4,7 +4,6 @@ import 'package:http/http.dart' as http;
 import '../models/rule_model.dart';
 
 class AiAdvisorService {
-  // Tablonda günlük 500 istek kotası olan modeller
   static const List<String> _models = [
     'gemini-3.5-flash-lite',
     'gemini-3.1-flash-lite',
@@ -20,9 +19,9 @@ class AiAdvisorService {
     final prompt = """
 Sen Human Analytics Engine Sokratik Karar Teftişçisisin.
 Kullanıcı şu kararı test ediyor: "$decisionTitle".
-Kararın bağlamını (yazılım, iş, ortaklık, kişisel vb.) kendi zekanla anla ve kategorize et.
+Kararın bağlamını (yazılım, iş, ortaklık, açık kaynak, kişisel vb.) kendi zekanla analiz et.
 
-10 Evrensel Kuralın her biri için bu karara özel, somut ve acımasız 1 soru ile insanın düşeceği 1 tipik avuntu/tuzak üret.
+10 Evrensel Kuralın her biri için karara özel, somut ve vurucu 1 soru ile insanın düşeceği 1 tipik avuntu/tuzak üret.
 Zorlama tarihler sıkıştırma, mantık ve stratejiye odaklan.
 
 SADECE aşağıdaki JSON formatında döndür:
@@ -52,7 +51,7 @@ SADECE aşağıdaki JSON formatında döndür:
             ],
             "generationConfig": {
               "temperature": 0.7,
-              "maxOutputTokens": 1200,
+              "maxOutputTokens": 1500,
             }
           }),
         );
@@ -73,7 +72,7 @@ SADECE aşağıdaki JSON formatında döndür:
           return result;
         }
       } catch (_) {
-        continue; // Bir modelde hata olursa listedeki diğer modele geçer
+        continue;
       }
     }
     return {};
@@ -83,17 +82,27 @@ SADECE aşağıdaki JSON formatında döndür:
     required String decisionTitle,
     required List<RuleModel> failedRules,
     required List<RuleModel> weakRules,
+    required List<RuleModel> exemptRules,
     String? apiKey,
   }) async {
     if (apiKey != null && apiKey.trim().isNotEmpty) {
       final prompt = """
 Sen Human Analytics Engine Bilişsel Savunma Danışmanısın.
 Kullanıcı şu kararı test etti: "$decisionTitle".
-Kararın türünü (yazılım, mimari, kariyer, yatırım) kendin anla ve O ALANIN diliyle konuş.
-- KÖR NOKTALAR (Hiç düşünülmemiş): ${failedRules.map((r) => r.title).join(", ")}
+- KÖR NOKTALAR (Yüzleşilen Zaaflar): ${failedRules.map((r) => r.title).join(", ")}
 - YARIM PLANLAR (Sezgisel): ${weakRules.map((r) => r.title).join(", ")}
+- MUAF / KAPSAM DIŞI: ${exemptRules.map((r) => r.title).join(", ")}
 
-Lütfen kullanıcıya acı gerçekleri yüzüne vuran, 3 maddelik çok sert ve bu karara özel bir eylem reçetesi yaz. Finans dışı konularda 'stop-loss' gibi alakasız borsa jargonu kullanma, konunun kendi diliyle konuş. Markdown formatında olsun.
+Lütfen metni yarıda kesmeyecek şekilde, DERLİ TOPLU, OKUNAKLI ve tam olarak aşağıdaki 3 blok formatında bir reçete yaz:
+
+### 🎯 1. Bilişsel Röntgen (Teşhis)
+(Kararın psikolojik ve stratejik analizini yapan, lafı dolandırmayan maksimum 2 paragraf)
+
+### ⚡ 2. Kritik Eylem Adımları
+(Tespit edilen kör noktalar için somut ve uygulanabilir maksimum 3 sert madde)
+
+### ⏱️ 3. 48 Saatlik İlk Test
+(Kullanıcının hemen yarın uygulayabileceği en küçük ve en acımasız gerçeklik testi)
 """;
 
       for (String model in _models) {
@@ -112,8 +121,8 @@ Lütfen kullanıcıya acı gerçekleri yüzüne vuran, 3 maddelik çok sert ve b
                 }
               ],
               "generationConfig": {
-                "temperature": 0.8,
-                "maxOutputTokens": 800,
+                "temperature": 0.75,
+                "maxOutputTokens": 2048, // Kesilmeyi önleyen geniş token alanı
               }
             }),
           );
@@ -128,6 +137,6 @@ Lütfen kullanıcıya acı gerçekleri yüzüne vuran, 3 maddelik çok sert ve b
       }
     }
 
-    return "### ⚠️ Bilişsel Kırılganlık Uyarısı\n\nBu kararda kritik kör noktalar tespit edildi. Lütfen en az bir tarafsız uzmana danışmadan ve başarısızlık halinde ne yapacağınızı netleştirmeden yola çıkmayın.";
+    return "### 🎯 Bilişsel Röntgen\n\nBu kararda kritik kör noktalar tespit edildi. Lütfen en az bir tarafsız uzmana danışmadan ve başarısızlık kriterlerinizi sabitlemeden yola çıkmayın.";
   }
 }

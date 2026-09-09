@@ -51,7 +51,7 @@ class _WizardScreenState extends State<WizardScreen> {
           final rule = rules[index];
 
           return SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
+            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -64,50 +64,50 @@ class _WizardScreenState extends State<WizardScreen> {
                     fontSize: 12,
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
                 Text(
                   rule.title,
-                  style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
+                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                 ),
                 Text(
                   rule.concept,
                   style: const TextStyle(color: Colors.grey, fontSize: 13, fontStyle: FontStyle.italic),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 18),
 
-                // Karara Özel Dinamik Soru Kartı
+                // Dinamik Soru Kartı
                 Container(
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.all(18),
                   decoration: BoxDecoration(
                     color: Theme.of(context).colorScheme.surface,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFF38BDF8).withValues(alpha: 0.3), width: 1.5),
+                    border: Border.all(color: const Color(0xFF38BDF8).withValues(alpha: 0.35), width: 1.5),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Row(
                         children: [
-                          Icon(Icons.psychology, color: Color(0xFF38BDF8), size: 20),
+                          Icon(Icons.psychology, color: Color(0xFF38BDF8), size: 18),
                           SizedBox(width: 8),
-                          Text("Bu Karara Özel Sorgu:", style: TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold)),
+                          Text("Bu Karara Özel Sorgu:", style: TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold, fontSize: 13)),
                         ],
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 10),
                       Text(
                         rule.activeQuestion,
-                        style: const TextStyle(fontSize: 17, height: 1.5, fontWeight: FontWeight.w500),
+                        style: const TextStyle(fontSize: 16, height: 1.45, fontWeight: FontWeight.w500),
                       ),
                       if (rule.dynamicTrap != null) ...[
-                        const Divider(height: 24),
+                        const Divider(height: 20),
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text("⚠️ ", style: TextStyle(fontSize: 14)),
+                            const Text("⚠️ ", style: TextStyle(fontSize: 13)),
                             Expanded(
                               child: Text(
                                 "Tuzak: ${rule.dynamicTrap!}",
-                                style: const TextStyle(color: Colors.orange, fontSize: 13, height: 1.4),
+                                style: const TextStyle(color: Colors.orange, fontSize: 12, height: 1.35),
                               ),
                             ),
                           ],
@@ -117,11 +117,11 @@ class _WizardScreenState extends State<WizardScreen> {
                   ),
                 ),
 
-                const SizedBox(height: 32),
-                const Text("Dürüst Değerlendirmen:", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 12),
+                const SizedBox(height: 24),
+                const Text("Dürüst Değerlendirmen:", style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 10),
 
-                // 3 Seviyeli Dürüstlük Kartları
+                // 4 Seviyeli Kartlar
                 _buildChoiceButton(
                   context: context,
                   rule: rule,
@@ -130,7 +130,7 @@ class _WizardScreenState extends State<WizardScreen> {
                   icon: Icons.cancel_outlined,
                   total: rules.length,
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 8),
                 _buildChoiceButton(
                   context: context,
                   rule: rule,
@@ -139,7 +139,7 @@ class _WizardScreenState extends State<WizardScreen> {
                   icon: Icons.help_outline,
                   total: rules.length,
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 8),
                 _buildChoiceButton(
                   context: context,
                   rule: rule,
@@ -148,7 +148,16 @@ class _WizardScreenState extends State<WizardScreen> {
                   icon: Icons.check_circle_outline,
                   total: rules.length,
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 8),
+                _buildChoiceButton(
+                  context: context,
+                  rule: rule,
+                  level: HonestyLevel.exempt,
+                  color: Colors.blueGrey,
+                  icon: Icons.remove_circle_outline,
+                  total: rules.length,
+                ),
+                const SizedBox(height: 16),
               ],
             ),
           );
@@ -171,7 +180,7 @@ class _WizardScreenState extends State<WizardScreen> {
       onTap: () => _selectLevel(context, rule, level, total),
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
           color: isSelected ? color.withValues(alpha: 0.15) : Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(12),
@@ -179,20 +188,20 @@ class _WizardScreenState extends State<WizardScreen> {
         ),
         child: Row(
           children: [
-            Icon(icon, color: color, size: 28),
-            const SizedBox(width: 16),
+            Icon(icon, color: color, size: 24),
+            const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     level.label,
-                    style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 15),
+                    style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 14),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 2),
                   Text(
                     level.description,
-                    style: const TextStyle(color: Colors.grey, fontSize: 12),
+                    style: const TextStyle(color: Colors.grey, fontSize: 11),
                   ),
                 ],
               ),
