@@ -9,7 +9,7 @@ import '../core/rules_data.dart';
 import '../services/ai_advisor_service.dart';
 
 class ResultScreen extends StatefulWidget {
-  final DecisionHistory? historyRecord; // Geçmişten geliyorsa burası dolu olur
+  final DecisionHistory? historyRecord;
 
   const ResultScreen({super.key, this.historyRecord});
 
@@ -19,7 +19,7 @@ class ResultScreen extends StatefulWidget {
 
 class _ResultScreenState extends State<ResultScreen> {
   bool _isLoadingAi = false;
-  int _activeFilter = 0; // 0: Tümü, 1: Kör Noktalar, 2: Yarım Planlar, 3: Muaf
+  int _activeFilter = 0;
 
   @override
   void initState() {
@@ -50,6 +50,23 @@ class _ResultScreenState extends State<ResultScreen> {
     setState(() => _isLoadingAi = false);
   }
 
+  void _generatePrescriptionForHistory(String title, List<RuleModel> blinds, List<RuleModel> intuits, List<RuleModel> exempts) async {
+    final provider = context.read<DecisionProvider>();
+    setState(() => _isLoadingAi = true);
+
+    final prescription = await AiAdvisorService.generatePrescription(
+      decisionTitle: title,
+      failedRules: blinds,
+      weakRules: intuits,
+      exemptRules: exempts,
+      apiKey: provider.geminiApiKey,
+    );
+
+    if (!mounted) return;
+    provider.setPrescription(prescription, targetTitle: title);
+    setState(() => _isLoadingAi = false);
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<DecisionProvider>();
@@ -57,9 +74,16 @@ class _ResultScreenState extends State<ResultScreen> {
 
     final String title = isHistory ? widget.historyRecord!.title : provider.decisionTitle;
     final int score = isHistory ? widget.historyRecord!.score : provider.calculateScore;
-    final String? prescription = isHistory ? widget.historyRecord!.prescription : provider.currentPrescription;
+    
+    // Geçmiş kayıtlarda güncellenen reçeteyi provider'dan dinamik oku
+    String? prescription;
+    if (isHistory) {
+      final match = provider.history.firstWhere((h) => h.title == title, orElse: () => widget.historyRecord!);
+      prescription = match.prescription;
+    } else {
+      prescription = provider.currentPrescription;
+    }
 
-    // Kural Listesi Oluşturma (Geçmiş veya Canlı)
     List<RuleModel> allRules;
     if (isHistory) {
       allRules = RulesData.universalRules.map((baseRule) {
@@ -117,7 +141,7 @@ class _ResultScreenState extends State<ResultScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1. Üst Skor Kartı
+            // 1. Skor Kartı
             Center(
               child: Container(
                 width: double.infinity,
@@ -174,7 +198,7 @@ class _ResultScreenState extends State<ResultScreen> {
                           icon: const Icon(Icons.copy, size: 16, color: Color(0xFF38BDF8)),
                           tooltip: "Reçeteyi Kopyala",
                           onPressed: () {
-                            Clipboard.setData(ClipboardData(text: prescription));
+                            Clipboard.setData(ClipboardData(text: prescription!));
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(content: Text("AI Reçetesi panoya kopyalandı!")),
                             );
@@ -188,11 +212,21 @@ class _ResultScreenState extends State<ResultScreen> {
                       padding: EdgeInsets.symmetric(vertical: 16.0),
                       child: Center(child: Text("Gemini 3.5 reçeteyi hazırlıyor...", style: TextStyle(color: Colors.grey))),
                     )
-                  else
+                  else if (prescription != null)
                     Text(
-                      prescription ?? "Bu karar için bir reçete oluşturulmamış.",
+                      prescription,
                       style: const TextStyle(fontSize: 14, height: 1.5),
+                    )
+                  else ...[
+                    const Text("Bu karar için henüz bir reçete oluşturulmamış.", style: TextStyle(color: Colors.grey)),
+                    const SizedBox(height: 10),
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.bolt, size: 16),
+                      label: const Text("Şimdi AI Reçetesi Üret"),
+                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF38BDF8)),
+                      onPressed: () => _generatePrescriptionForHistory(title, blinds, intuits, exempts),
                     ),
+                  ],
                 ],
               ),
             ),

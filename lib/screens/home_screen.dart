@@ -88,29 +88,61 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _showApiKeyDialog(BuildContext context) {
     final provider = context.read<DecisionProvider>();
+    final hasKey = provider.geminiApiKey != null && provider.geminiApiKey!.isNotEmpty;
     final keyController = TextEditingController(text: provider.geminiApiKey ?? '');
 
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: Theme.of(ctx).colorScheme.surface,
-        title: const Text("Gemini API Anahtarı"),
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text("Gemini API Anahtarı"),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: (hasKey ? const Color(0xFF10B981) : Colors.grey).withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: hasKey ? const Color(0xFF10B981) : Colors.grey),
+              ),
+              child: Text(
+                hasKey ? "● Aktif" : "○ Girilmedi",
+                style: TextStyle(color: hasKey ? const Color(0xFF10B981) : Colors.grey, fontSize: 11, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              "Google AI Studio anahtarınızı girdiğinizde Gemini 3.5 Flash Lite motoru devreye girer (Günde 500 ücretsiz analiz).",
-              style: TextStyle(fontSize: 13, color: Colors.grey),
+              "Google AI Studio'dan alacağınız ücretsiz anahtar cihazınızda (localStorage) saklanır ve asla üçüncü şahıslara iletilmez.",
+              style: TextStyle(fontSize: 13, color: Colors.grey, height: 1.4),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
             TextField(
               controller: keyController,
-              decoration: const InputDecoration(border: OutlineInputBorder(), hintText: "AIzaSy..."),
+              obscureText: true,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                hintText: "AIzaSy...",
+                prefixIcon: Icon(Icons.vpn_key_outlined, size: 20),
+              ),
             ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("İptal")),
+          if (hasKey)
+            TextButton(
+              onPressed: () {
+                provider.setApiKey('');
+                Navigator.pop(ctx);
+              },
+              child: const Text("Anahtarı Sil", style: TextStyle(color: Colors.redAccent)),
+            ),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Kapat")),
           ElevatedButton(
             onPressed: () {
               provider.setApiKey(keyController.text.trim());
@@ -129,7 +161,25 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("HAE Sokratik Karar Laboratuvarı", style: TextStyle(fontSize: 16, letterSpacing: 1)),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text("HAE Sokratik Karar Laboratuvarı", style: TextStyle(fontSize: 16, letterSpacing: 1)),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: const Color(0xFF38BDF8).withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: const Color(0xFF38BDF8), width: 0.8),
+              ),
+              child: const Text(
+                DecisionProvider.appVersion,
+                style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.insights, color: Color(0xFF38BDF8)),
@@ -137,7 +187,12 @@ class _HomeScreenState extends State<HomeScreen> {
             onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AnalyticsScreen())),
           ),
           IconButton(
-            icon: const Icon(Icons.key, color: Colors.grey),
+            icon: Icon(
+              Icons.key,
+              color: (provider.geminiApiKey != null && provider.geminiApiKey!.isNotEmpty) 
+                  ? const Color(0xFF10B981) 
+                  : Colors.grey,
+            ),
             tooltip: "API Ayarı",
             onPressed: () => _showApiKeyDialog(context),
           ),
@@ -171,7 +226,6 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 12),
 
-              // Responsive Wrap (Taşmayı Önleyen Esnek Yapı)
               Wrap(
                 spacing: 8.0,
                 runSpacing: 8.0,

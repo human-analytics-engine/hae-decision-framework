@@ -7,6 +7,8 @@ import '../models/decision_history_model.dart';
 import '../services/ai_advisor_service.dart';
 
 class DecisionProvider extends ChangeNotifier {
+  static const String appVersion = "v2.2.0";
+
   String decisionTitle = "";
   List<RuleModel> rules = [];
   List<DecisionHistory> history = [];
@@ -19,14 +21,37 @@ class DecisionProvider extends ChangeNotifier {
   }
 
   void setApiKey(String key) async {
-    geminiApiKey = key;
+    geminiApiKey = key.trim();
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('gemini_api_key', key);
+    if (geminiApiKey!.isEmpty) {
+      await prefs.remove('gemini_api_key');
+      geminiApiKey = null;
+    } else {
+      await prefs.setString('gemini_api_key', geminiApiKey!);
+    }
     notifyListeners();
   }
 
-  void setPrescription(String p) {
+  // Reçete üretildiği an hafızadaki geçmiş kaydını da anında günceller (BUG FIX)
+  void setPrescription(String p, {String? targetTitle}) async {
     currentPrescription = p;
+    final titleToMatch = targetTitle ?? decisionTitle;
+
+    final index = history.indexWhere((h) => h.title == titleToMatch);
+    if (index != -1) {
+      final old = history[index];
+      history[index] = DecisionHistory(
+        title: old.title,
+        score: old.score,
+        date: old.date,
+        failedRuleIds: old.failedRuleIds,
+        prescription: p,
+        ruleLevels: old.ruleLevels,
+      );
+      final prefs = await SharedPreferences.getInstance();
+      List<String> historyJsonList = history.map((h) => h.toJson()).toList();
+      await prefs.setStringList('decision_history', historyJsonList);
+    }
     notifyListeners();
   }
 
@@ -106,7 +131,6 @@ class DecisionProvider extends ChangeNotifier {
     return freq;
   }
 
-  // 3 Aşama Başarı İstatistikleri
   Map<Stage, int> get stageSuccessRates {
     Map<Stage, int> rates = {Stage.clearMind: 0, Stage.testReality: 0, Stage.survival: 0};
     if (rules.isEmpty) return rates;
@@ -171,7 +195,7 @@ class DecisionProvider extends ChangeNotifier {
     final reportScore = score ?? calculateScore;
 
     StringBuffer sb = StringBuffer();
-    sb.writeln("# 🧠 Bilişsel Karar Teftiş Raporu (HAE v2.2)");
+    sb.writeln("# 🧠 Bilişsel Karar Teftiş Raporu (HAE $appVersion)");
     sb.writeln("**Karar:** $reportTitle");
     sb.writeln("**Sağlamlık Skoru:** %$reportScore");
     sb.writeln("**Tarih:** ${DateTime.now().toLocal()}\n");
