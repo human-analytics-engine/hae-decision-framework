@@ -81,7 +81,7 @@ class _WizardScreenState extends State<WizardScreen> {
                   decoration: BoxDecoration(
                     color: Theme.of(context).colorScheme.surface,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFF38BDF8).withOpacity(0.3), width: 1.5),
+                    border: Border.all(color: const Color(0xFF38BDF8).withValues(alpha: 0.3), width: 1.5),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -126,7 +126,7 @@ class _WizardScreenState extends State<WizardScreen> {
                   context: context,
                   rule: rule,
                   level: HonestyLevel.blindSpot,
-                  color: const Color(0xFFEF4444), // Kırmızı
+                  color: const Color(0xFFEF4444),
                   icon: Icons.cancel_outlined,
                   total: rules.length,
                 ),
@@ -135,7 +135,7 @@ class _WizardScreenState extends State<WizardScreen> {
                   context: context,
                   rule: rule,
                   level: HonestyLevel.intuitive,
-                  color: Colors.orange, // Sarı
+                  color: Colors.orange,
                   icon: Icons.help_outline,
                   total: rules.length,
                 ),
@@ -144,7 +144,7 @@ class _WizardScreenState extends State<WizardScreen> {
                   context: context,
                   rule: rule,
                   level: HonestyLevel.concrete,
-                  color: const Color(0xFF10B981), // Yeşil
+                  color: const Color(0xFF10B981),
                   icon: Icons.check_circle_outline,
                   total: rules.length,
                 ),
@@ -173,7 +173,7 @@ class _WizardScreenState extends State<WizardScreen> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isSelected ? color.withOpacity(0.15) : Theme.of(context).colorScheme.surface,
+          color: isSelected ? color.withValues(alpha: 0.15) : Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: isSelected ? color : Colors.white10, width: isSelected ? 2 : 1),
         ),

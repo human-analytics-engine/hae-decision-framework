@@ -16,10 +16,13 @@ class DecisionDetailSheet extends StatelessWidget {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (ctx) => Padding(
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
         padding: const EdgeInsets.all(24.0),
+        decoration: BoxDecoration(
+          color: Theme.of(ctx).scaffoldBackgroundColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
         child: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -90,14 +93,14 @@ class DecisionDetailSheet extends StatelessWidget {
                   children: [
                     Text(record.title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 4),
-                    Text("${record.category.label} • ${DateFormat('dd MMMM yyyy, HH:mm').format(record.date)}", style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                    Text(DateFormat('dd MMMM yyyy, HH:mm').format(record.date), style: const TextStyle(color: Colors.grey, fontSize: 12)),
                   ],
                 ),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                 decoration: BoxDecoration(
-                  color: scoreColor.withOpacity(0.15),
+                  color: scoreColor.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(color: scoreColor),
                 ),
@@ -120,7 +123,7 @@ class DecisionDetailSheet extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: Theme.of(context).colorScheme.surface,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: isFailed ? Colors.redAccent.withOpacity(0.3) : Colors.transparent),
+                    border: Border.all(color: isFailed ? Colors.redAccent.withValues(alpha: 0.3) : Colors.transparent),
                   ),
                   child: ListTile(
                     leading: Icon(
@@ -168,7 +171,6 @@ class DecisionDetailSheet extends StatelessWidget {
                   title: record.title,
                   score: record.score,
                   failedIds: record.failedRuleIds,
-                  category: record.category,
                 );
                 Clipboard.setData(ClipboardData(text: md));
                 Navigator.pop(context);

@@ -29,23 +29,25 @@ class _ResultScreenState extends State<ResultScreen> {
 
     final prescription = await AiAdvisorService.generatePrescription(
       decisionTitle: provider.decisionTitle,
-      category: provider.selectedCategory,
       failedRules: provider.blindSpotRules,
       weakRules: provider.intuitiveRules,
       apiKey: provider.geminiApiKey,
     );
 
     if (!mounted) return;
-    provider.setPrescription(prescription); // Raporla birleştirmek için sakla
+    provider.setPrescription(prescription);
     setState(() => _isLoadingAi = false);
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (ctx) => Padding(
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
         padding: const EdgeInsets.all(24.0),
+        decoration: BoxDecoration(
+          color: Theme.of(ctx).scaffoldBackgroundColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
         child: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -74,7 +76,7 @@ class _ResultScreenState extends State<ResultScreen> {
                     tooltip: "Reçeteyi Kopyala",
                     onPressed: () {
                       Clipboard.setData(ClipboardData(text: prescription));
-                      ScaffoldMessenger.of(context).showSnackBar(
+                      ScaffoldMessenger.of(ctx).showSnackBar(
                         const SnackBar(content: Text("Yalnızca AI reçetesi panoya kopyalandı!")),
                       );
                     },

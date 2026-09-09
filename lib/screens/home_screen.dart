@@ -1,8 +1,9 @@
 // lib/screens/home_screen.dart
+// ignore_for_file: avoid_web_libraries_in_flutter, deprecated_member_use
+import 'dart:js' as js;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import 'dart:js' as js;
 import '../providers/decision_provider.dart';
 import 'wizard_screen.dart';
 import 'decision_detail_sheet.dart';
@@ -39,9 +40,11 @@ class _HomeScreenState extends State<HomeScreen> {
       ]);
     } catch (_) {
       setState(() => _isListening = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Ses tanıma bu tarayıcıda başlatılamadı.")),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Ses tanıma bu tarayıcıda başlatılamadı.")),
+        );
+      }
     }
   }
 
@@ -90,7 +93,7 @@ class _HomeScreenState extends State<HomeScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: Theme.of(context).colorScheme.surface,
+        backgroundColor: Theme.of(ctx).colorScheme.surface,
         title: const Text("Gemini API Anahtarı"),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -249,7 +252,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                       decoration: BoxDecoration(
-                                        color: scoreColor.withOpacity(0.1),
+                                        color: scoreColor.withValues(alpha: 0.1),
                                         borderRadius: BorderRadius.circular(20),
                                         border: Border.all(color: scoreColor),
                                       ),
