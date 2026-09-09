@@ -7,6 +7,7 @@ class DecisionHistory {
   final DateTime date;
   final List<int> failedRuleIds;
   final String? prescription;
+  final Map<String, String>? ruleLevels; // Kural ID -> HonestyLevel.name
 
   DecisionHistory({
     required this.title,
@@ -14,6 +15,7 @@ class DecisionHistory {
     required this.date,
     required this.failedRuleIds,
     this.prescription,
+    this.ruleLevels,
   });
 
   Map<String, dynamic> toMap() {
@@ -23,6 +25,7 @@ class DecisionHistory {
       'date': date.toIso8601String(),
       'failedRuleIds': failedRuleIds,
       'prescription': prescription,
+      'ruleLevels': ruleLevels,
     };
   }
 
@@ -33,6 +36,7 @@ class DecisionHistory {
       date: DateTime.parse(map['date']),
       failedRuleIds: List<int>.from(map['failedRuleIds'] ?? []),
       prescription: map['prescription'],
+      ruleLevels: map['ruleLevels'] != null ? Map<String, String>.from(map['ruleLevels']) : null,
     );
   }
 
